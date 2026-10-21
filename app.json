@@ -4,7 +4,7 @@
     "slug": "deDivulgadores",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/De-Divulgadores-logo100x102.png",
     "scheme": "dedivulgadores",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -28,11 +28,13 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#FFF9F6",
+          "image": "./assets/images/De-Divulgadores-logo100x102.png",
+          "imageWidth": 150
         }
-      ]
+      ],
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
