@@ -64,6 +64,8 @@ function RootNavigator() {
           <Stack.Screen name="workshop/[id]" />
           {/* Sin gesto de "deslizar para regresar" (iOS): chocaba con arrastrar la comida. Se sale con "Salir". */}
           <Stack.Screen name="juegos/dibu" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
+          <Stack.Screen name="juegos/insectos" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
+          <Stack.Screen name="juegos/estrellas" />
         </Stack.Protected>
         <Stack.Screen name="auth/callback" />
       </Stack>

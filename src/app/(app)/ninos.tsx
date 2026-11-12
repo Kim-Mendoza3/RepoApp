@@ -5,11 +5,11 @@ import { Animated, Pressable, StyleSheet, Text, useAnimatedValue, View } from 'r
 
 import { AppScreen } from '@/components/app-screen';
 import { GridBackground } from '@/components/grid-background';
-import { AtomIcon, MagnetIcon, PlayIcon } from '@/components/icons';
+import { BugIcon, PlayIcon, ShootingStarIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
+import { stamp } from '@/features/kids/game-chrome';
 import { pressedStyle, textStyles } from '@/theme/common-styles';
 import { fonts } from '@/theme/fonts';
-import type { LabColors } from '@/theme/palette';
 
 const dibuSource = require('@/assets/images/serpiente-normal.png');
 
@@ -59,25 +59,35 @@ export default function KidsScreen() {
         </Pressable>
       </View>
 
-      <Text style={[textStyles.label, styles.sectionLabel, { color: lab.label, fontFamily: fonts.monoBold }]}>{'// próximos experimentos'}</Text>
+      <Text style={[textStyles.label, styles.sectionLabel, { color: lab.label, fontFamily: fonts.monoBold }]}>{'// más experimentos'}</Text>
       <View style={styles.upcomingRow}>
-        <UpcomingTile Icon={AtomIcon} code="EXP-02" background={lab.amber} />
-        <UpcomingTile Icon={MagnetIcon} code="EXP-03" background={lab.pink} />
+        <GameTile Icon={BugIcon} code="EXP-02" title="¿Insecto o arácnido?" background={lab.amber} onPress={() => router.push('/juegos/insectos')} />
+        <GameTile Icon={ShootingStarIcon} code="EXP-03" title="Une las estrellas" background={lab.pink} onPress={() => router.push('/juegos/estrellas')} />
       </View>
     </AppScreen>
   );
 }
 
-function UpcomingTile({ Icon, code, background }: { Icon: IconComponent; code: string; background: string }) {
+function GameTile({ Icon, code, title, background, onPress }: { Icon: IconComponent; code: string; title: string; background: string; onPress: () => void }) {
   const lab = useLabColors();
   return (
-    <View accessibilityLabel={`${code}: próximamente`} style={[styles.upcoming, stamp(lab, 5, background)]}>
-      <Icon color={lab.onBright} size={32} weight="duotone" />
+    <Pressable
+      accessibilityLabel={`${code}: ${title}`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.upcoming, stamp(lab, 5, background), pressed && pressedStyle]}
+    >
+      <View style={styles.tileTop}>
+        <Icon color={lab.onBright} size={32} weight="duotone" />
+        <View style={[styles.tilePlay, { backgroundColor: lab.surface, borderColor: lab.line }]}>
+          <PlayIcon color={lab.text} size={14} weight="bold" />
+        </View>
+      </View>
       <View>
         <Text style={[styles.tagText, { color: lab.onBright, fontSize: 10 }]}>{code}</Text>
-        <Text style={[styles.upcomingTitle, { color: lab.onBright }]}>Próximamente</Text>
+        <Text style={[styles.upcomingTitle, { color: lab.onBright }]}>{title}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -100,20 +110,6 @@ function FloatingDibu() {
   );
 }
 
-/** Estilo "estampa": borde grueso y sombra sólida desplazada hacia abajo. */
-function stamp(lab: LabColors, depth: number, background?: string) {
-  return {
-    backgroundColor: background ?? lab.surface,
-    borderColor: lab.line,
-    borderWidth: 2,
-    shadowColor: background ? lab.line : lab.shadow,
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: depth },
-    elevation: 0,
-  };
-}
-
 const styles = StyleSheet.create({
   highlight: { fontFamily: fonts.display, borderRadius: 10, overflow: 'hidden' },
   intro: { marginTop: 8, marginBottom: 20 },
@@ -134,6 +130,8 @@ const styles = StyleSheet.create({
   playText: { fontFamily: fonts.bodyBold, fontSize: 16 },
   sectionLabel: { fontSize: 12, marginTop: 24, marginBottom: 12 },
   upcomingRow: { flexDirection: 'row', gap: 14 },
-  upcoming: { flex: 1, minHeight: 120, borderRadius: 22, padding: 14, justifyContent: 'space-between' },
+  upcoming: { flex: 1, minHeight: 138, borderRadius: 22, padding: 14, justifyContent: 'space-between', gap: 10 },
+  tileTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  tilePlay: { width: 30, height: 30, borderRadius: 15, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
   upcomingTitle: { fontFamily: fonts.display, fontSize: 17, lineHeight: 21 },
 });

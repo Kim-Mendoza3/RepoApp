@@ -1,6 +1,7 @@
 // Íconos Phosphor (https://phosphoricons.com) que usa la app.
 // Se importa cada uno por separado para que la app no cargue los más de mil íconos del paquete.
 // Uso: <HouseIcon size={22} color={colors.text} weight="duotone" />
+export { ArrowClockwiseIcon } from 'phosphor-react-native/src/icons/ArrowClockwise';
 export { ArrowLeftIcon } from 'phosphor-react-native/src/icons/ArrowLeft';
 export { ArrowRightIcon } from 'phosphor-react-native/src/icons/ArrowRight';
 export { AtomIcon } from 'phosphor-react-native/src/icons/Atom';
@@ -15,6 +16,7 @@ export { GlobeIcon } from 'phosphor-react-native/src/icons/Globe';
 export { GoogleLogoIcon } from 'phosphor-react-native/src/icons/GoogleLogo';
 export { GraduationCapIcon } from 'phosphor-react-native/src/icons/GraduationCap';
 export { HandSwipeRightIcon } from 'phosphor-react-native/src/icons/HandSwipeRight';
+export { HandTapIcon } from 'phosphor-react-native/src/icons/HandTap';
 export { HouseIcon } from 'phosphor-react-native/src/icons/House';
 export { ImageSquareIcon } from 'phosphor-react-native/src/icons/ImageSquare';
 export { LightbulbIcon } from 'phosphor-react-native/src/icons/Lightbulb';
@@ -28,12 +30,14 @@ export { RobotIcon } from 'phosphor-react-native/src/icons/Robot';
 export { RocketIcon } from 'phosphor-react-native/src/icons/Rocket';
 export { ShareNetworkIcon } from 'phosphor-react-native/src/icons/ShareNetwork';
 export { ShieldCheckIcon } from 'phosphor-react-native/src/icons/ShieldCheck';
+export { ShootingStarIcon } from 'phosphor-react-native/src/icons/ShootingStar';
 export { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
 export { SmileyIcon } from 'phosphor-react-native/src/icons/Smiley';
 export { SquaresFourIcon } from 'phosphor-react-native/src/icons/SquaresFour';
 export { StarIcon } from 'phosphor-react-native/src/icons/Star';
 export { SunIcon } from 'phosphor-react-native/src/icons/Sun';
 export { TargetIcon } from 'phosphor-react-native/src/icons/Target';
+export { TrophyIcon } from 'phosphor-react-native/src/icons/Trophy';
 export { UserCirclePlusIcon } from 'phosphor-react-native/src/icons/UserCirclePlus';
 export { UserCircleIcon } from 'phosphor-react-native/src/icons/UserCircle';
 export { UsersIcon } from 'phosphor-react-native/src/icons/Users';
