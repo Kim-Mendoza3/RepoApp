@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
 
 import type { Workshop } from '@/data/workshops';
 
@@ -34,7 +34,7 @@ type WorkshopCarouselProps = {
 
 export function WorkshopCarousel({ colors, slides, onSelectWorkshop, onHorizontalGesture, compact = false, minimal = false }: WorkshopCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const motion = useRef(new Animated.Value(0)).current;
+  const motion = useAnimatedValue(0);
   const transitioning = useRef(false);
   const activeIndexRef = useRef(0);
   const activeSlide = slides[activeIndex];
@@ -57,7 +57,11 @@ export function WorkshopCarousel({ colors, slides, onSelectWorkshop, onHorizonta
     return () => clearInterval(timer);
   }, [activeIndex, slides.length]);
 
-  const swipeResponder = useRef(PanResponder.create({
+  // useState con función inicial crea el PanResponder una sola vez (recrearlo a mitad de un
+  // gesto lo cortaría). Los refs solo se leen dentro de los manejadores del gesto, no al dibujar,
+  // así que el aviso de la regla react-hooks/refs aquí es un falso positivo.
+  // eslint-disable-next-line react-hooks/refs
+  const [swipeResponder] = useState(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_, gestureState) => slides.length > 1 && Math.abs(gestureState.dx) > 12 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.25,
     onPanResponderGrant: () => onHorizontalGesture?.(true),
     onPanResponderRelease: (_, gestureState) => {
@@ -68,7 +72,7 @@ export function WorkshopCarousel({ colors, slides, onSelectWorkshop, onHorizonta
       moveTo(nextIndex, direction);
     },
     onPanResponderTerminate: () => onHorizontalGesture?.(false),
-  })).current;
+  }));
 
   if (!activeSlide) return null;
 
@@ -81,8 +85,8 @@ export function WorkshopCarousel({ colors, slides, onSelectWorkshop, onHorizonta
       <View style={[styles.colorRail, { backgroundColor: activeSlide.accent }]} />
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
-          {!minimal && <Text style={[styles.kicker, { color: activeSlide.accent }]}>{compact ? 'EXPERIENCIAS DESTACADAS' : 'GALERIA DEL TALLER'}</Text>}
-          <Text style={[styles.heading, { color: colors.text }]}>{compact ? 'Ciencia en accion' : minimal ? 'Galeria del taller' : activeSlide.title}</Text>
+          {!minimal && <Text style={[styles.kicker, { color: activeSlide.accent }]}>{compact ? 'EXPERIENCIAS DESTACADAS' : 'GALERÍA DEL TALLER'}</Text>}
+          <Text style={[styles.heading, { color: colors.text }]}>{compact ? 'Ciencia en acción' : minimal ? 'Galería del taller' : activeSlide.title}</Text>
         </View>
         <View style={[styles.counter, { backgroundColor: `${activeSlide.accent}18` }]}>
           <Text style={[styles.counterText, { color: activeSlide.accent }]}>{String(activeIndex + 1).padStart(2, '0')}</Text>

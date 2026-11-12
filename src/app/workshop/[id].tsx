@@ -6,40 +6,16 @@ import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WorkshopCarousel } from '@/components/workshop-carousel';
-import { useAppTheme } from '@/context/theme-context';
+import { useAppTheme, useColors } from '@/context/theme-context';
 import { workshops } from '@/data/workshops';
-
-const palette = {
-  light: { background: '#F7FAFC', surface: '#FFFFFF', text: '#17202A', muted: '#718096', line: '#E2E8F0' },
-  dark: { background: '#171923', surface: '#2D3748', text: '#F7FAFC', muted: '#E2E8F0', line: '#718096' },
-} as const;
-
-const darkModeAccents: Record<string, string> = {
-  '#087F68': '#5DE0BF',
-  '#2463A5': '#8CCFFF',
-  '#A85B00': '#FFBE72',
-  '#6941A5': '#C4B5FD',
-  '#4F7C3A': '#A9D77B',
-  '#168A70': '#65E0BF',
-  '#C04A78': '#FF9CC1',
-  '#315A8A': '#91C7FF',
-  '#B54708': '#FFB36B',
-  '#A60E12': '#FF8F8A',
-  '#7A4EAB': '#CFB2FF',
-  '#5C6F35': '#C7E47B',
-  '#8B5E3C': '#E1AA7B',
-};
-
-function getWorkshopAccent(accent: string, mode: keyof typeof palette) {
-  return mode === 'dark' ? darkModeAccents[accent] ?? accent : accent;
-}
+import { getWorkshopAccent } from '@/theme/palette';
 
 // PANTALLA DETALLE DE TALLER.
 export default function WorkshopDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const workshop = workshops.find((item) => item.id === id) ?? workshops.find((item) => item.id === 'robotica');
   const { mode } = useAppTheme();
-  const colors = palette[mode];
+  const colors = useColors();
   const accent = getWorkshopAccent(workshop?.accent ?? '#2463A5', mode);
   const audienceText = 'Preescolar, primaria, secundaria, bachillerato y universidad';
   const durationText = '25 min a 1 h';
