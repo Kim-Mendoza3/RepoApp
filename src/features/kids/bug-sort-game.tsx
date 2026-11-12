@@ -155,7 +155,7 @@ export function BugSortGame({ onDraggingChange }: BugSortGameProps) {
                 onPress={() => classify(jar.group)}
                 style={({ pressed }) => [styles.jar, stamp(lab, 4, jar.group === 'insecto' ? lab.amber : lab.cyan), pressed && pressedStyle]}
               >
-                <View style={[styles.jarLid, { backgroundColor: lab.line }]} />
+                <View style={[styles.jarLid, { backgroundColor: lab.brightLine }]} />
                 <Text style={styles.jarEmoji}>{jar.emoji}</Text>
                 <Text style={[styles.jarLabel, { color: lab.onBright }]}>{jar.label}</Text>
                 <Text style={[styles.jarLegs, { color: lab.onBright }]}>{jar.legs}</Text>

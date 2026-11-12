@@ -12,13 +12,17 @@ import type { LabColors } from '@/theme/palette';
 
 // Piezas compartidas por los minijuegos de la pestaña Niños (estilo "laboratorio de juegos").
 
-/** Estilo "estampa": borde grueso y sombra sólida desplazada hacia abajo. */
+/**
+ * Estilo "estampa": borde grueso y sombra sólida desplazada hacia abajo.
+ * Con `background` (un color vivo) usa `brightLine`/`brightShadow` para que el contorno
+ * nunca sea del mismo color que el relleno (pasaba con el cian en modo oscuro).
+ */
 export function stamp(lab: LabColors, depth = 4, background?: string) {
   return {
     backgroundColor: background ?? lab.surface,
-    borderColor: lab.line,
+    borderColor: background ? lab.brightLine : lab.line,
     borderWidth: 2,
-    shadowColor: background ? lab.line : lab.shadow,
+    shadowColor: background ? lab.brightShadow : lab.shadow,
     shadowOpacity: 1,
     shadowRadius: 0,
     shadowOffset: { width: 0, height: depth },

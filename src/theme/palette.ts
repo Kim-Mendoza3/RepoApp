@@ -22,11 +22,15 @@ export const lab = {
   light: {
     background: '#EEF6FB', surface: '#FFFFFF', specimen: '#DDF5FA', text: '#0B1B2B', muted: '#4A5D70', label: '#0E7490',
     line: '#0B1B2B', shadow: '#0E7490', onBright: '#0B1B2B', grid: 'rgba(14, 116, 144, 0.10)',
+    // Contorno y sombra de las estampas con relleno de color vivo (cian, lima, ámbar, rosa).
+    brightLine: '#0B1B2B', brightShadow: '#0B1B2B',
     cyan: '#4FD6EC', lime: '#B8F171', amber: '#FFC857', pink: '#FF9EC4',
   },
   dark: {
     background: '#060C17', surface: '#0E1828', specimen: '#0F2A3D', text: '#E4EEF7', muted: '#9DB1C5', label: '#22D3EE',
     line: '#22D3EE', shadow: '#0891B2', onBright: '#04202A', grid: 'rgba(34, 211, 238, 0.09)',
+    // En oscuro, el contorno cian (`line`) se confundiría con un relleno cian: usamos blanco azulado.
+    brightLine: '#E4EEF7', brightShadow: '#0E7490',
     cyan: '#22D3EE', lime: '#A3E635', amber: '#FBBF24', pink: '#F472B6',
   },
 } as const;

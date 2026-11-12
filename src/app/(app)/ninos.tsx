@@ -28,7 +28,7 @@ export default function KidsScreen() {
 
       <View style={[styles.card, stamp(lab, 6)]}>
         <View style={styles.tagRow}>
-          <View style={[styles.tag, { backgroundColor: lab.cyan, borderColor: lab.line, borderWidth: 2 }]}>
+          <View style={[styles.tag, { backgroundColor: lab.cyan, borderColor: lab.brightLine, borderWidth: 2 }]}>
             <Text style={[styles.tagText, { color: lab.onBright }]}>EXPERIMENTO 01</Text>
           </View>
           <View style={[styles.tag, { backgroundColor: lab.lime }]}>
@@ -52,7 +52,7 @@ export default function KidsScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/juegos/dibu')}
-          style={({ pressed }) => [styles.playButton, { backgroundColor: lab.cyan, borderColor: lab.line, shadowColor: lab.line }, pressed && pressedStyle]}
+          style={({ pressed }) => [styles.playButton, { backgroundColor: lab.cyan, borderColor: lab.brightLine, shadowColor: lab.brightShadow }, pressed && pressedStyle]}
         >
           <PlayIcon color={lab.onBright} size={18} weight="bold" />
           <Text style={[styles.playText, { color: lab.onBright }]}>Iniciar experimento</Text>

@@ -105,7 +105,7 @@ export function ReptileGame({ onExit, onDraggingChange }: ReptileGameProps) {
           <ArrowLeftIcon color={lab.text} size={18} weight="bold" />
           <Text style={[styles.backText, { color: lab.text }]}>Salir</Text>
         </Pressable>
-        <View accessibilityLabel={`${score} aciertos`} style={[styles.scorePill, stamp, { backgroundColor: lab.amber }]}>
+        <View accessibilityLabel={`${score} aciertos`} style={[styles.scorePill, stamp, { backgroundColor: lab.amber, borderColor: lab.brightLine, shadowColor: lab.brightShadow }]}>
           <StarIcon color={lab.onBright} size={16} weight="fill" />
           <Text style={[styles.scoreText, { color: lab.onBright }]}>{score} aciertos</Text>
         </View>
