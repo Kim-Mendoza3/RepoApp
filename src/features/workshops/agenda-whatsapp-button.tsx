@@ -1,7 +1,8 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking } from 'react-native';
 
-import { pressedStyle } from '@/theme/common-styles';
+import { AnimatedButton } from '@/components/animated-button';
+import { WhatsappLogoIcon } from '@/components/icons';
+import { useColors } from '@/context/theme-context';
 
 const agendaWhatsAppUrl = 'https://wa.me/529531753907?text=Hola%2C%20me%20gustar%C3%ADa%20solicitar%20informaci%C3%B3n%20sobre%20visitas%20escolares%2C%20talleres%20o%20charlas%20itinerantes.';
 
@@ -18,27 +19,15 @@ async function openAgendaWhatsApp() {
   }
 }
 
-/** Botón verde para pedir una visita o taller al encargado de agenda. */
+/** Botón para pedir una visita o taller al encargado de agenda por WhatsApp. */
 export function AgendaWhatsAppButton() {
+  const colors = useColors();
   return (
-    <Pressable
-      accessibilityLabel="Contactar por WhatsApp al encargado de agenda"
-      accessibilityRole="button"
+    <AnimatedButton
+      label="Solicitar una visita por WhatsApp"
+      leading={<WhatsappLogoIcon color={colors.onAccent} size={22} weight="fill" />}
       onPress={openAgendaWhatsApp}
-      style={({ pressed }) => [styles.button, pressed && pressedStyle]}
-    >
-      <MaterialCommunityIcons color="#FFFFFF" name="whatsapp" size={52} />
-      <View style={styles.copy}>
-        <Text style={styles.title}>Solicita una visita o taller</Text>
-        <Text style={styles.text}>Contacta al encargado de agenda por WhatsApp.</Text>
-      </View>
-    </Pressable>
+      variant="accent"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  button: { borderRadius: 20, padding: 20, alignItems: 'center', marginBottom: 20, backgroundColor: '#25D366', shadowColor: '#128C7E', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
-  copy: { alignItems: 'center', marginTop: 12 },
-  title: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', textAlign: 'center' },
-  text: { color: '#F0FFF4', fontSize: 12, lineHeight: 17, marginTop: 4, textAlign: 'center' },
-});

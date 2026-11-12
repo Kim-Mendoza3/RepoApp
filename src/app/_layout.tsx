@@ -1,3 +1,4 @@
+import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -6,20 +7,25 @@ import { useEffect, useState } from 'react';
 import { LoadingScreen } from '@/components/loading-screen';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { ThemeProvider, useAppTheme } from '@/context/theme-context';
+import { fontAssets } from '@/theme/fonts';
 
-// Mantiene la pantalla de arranque nativa hasta que el primer render de React esté listo.
+// Mantiene la pantalla de arranque nativa hasta que las fuentes estén listas.
 SplashScreen.preventAutoHideAsync();
 
 // Tiempo mínimo de la animación de bienvenida, para que no parpadee si la sesión carga rápido.
 const INTRO_MS = 2400;
 
 export default function RootLayout() {
-  // Al montar el layout raíz quitamos la pantalla nativa; a partir de aquí
-  // la animación de carga propia (LoadingScreen) toma el relevo.
-  // Sin esta llamada, Android se queda para siempre en el logo.
+  const [fontsLoaded, fontError] = useFonts(fontAssets);
+  const ready = fontsLoaded || Boolean(fontError);
+
+  // Quitamos la pantalla nativa cuando las fuentes cargaron (o fallaron: en ese caso la app
+  // usa la fuente del sistema). Sin esta llamada, Android se queda para siempre en el logo.
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
+
+  if (!ready) return null;
 
   return (
     <ThemeProvider>

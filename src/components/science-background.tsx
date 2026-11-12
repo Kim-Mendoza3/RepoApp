@@ -1,21 +1,22 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { useEffect, type ComponentProps } from 'react';
+import { useEffect, type ComponentType } from 'react';
 import { Animated, StyleSheet, useAnimatedValue, View } from 'react-native';
 
-type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
+import { AtomIcon, BugIcon, DnaIcon, FlaskIcon, MicroscopeIcon, PlanetIcon, RobotIcon, RocketIcon } from '@/components/icons';
 
-const scienceIcons: IconName[] = ['microscope', 'telescope', 'chart-bubble', 'bug-outline', 'robot', 'dna', 'flask-outline', 'rocket-launch'];
+type IconComponent = ComponentType<{ color?: string; size?: number; weight?: 'duotone' }>;
+
+const scienceIcons: IconComponent[] = [MicroscopeIcon, PlanetIcon, AtomIcon, BugIcon, RobotIcon, DnaIcon, FlaskIcon, RocketIcon];
 
 /** Íconos de ciencia que flotan y se desvanecen detrás del contenido. */
-export function ScienceBackground({ opacity = 1 }: { opacity?: number }) {
+export function ScienceBackground({ opacity = 1, color = '#A60E12' }: { opacity?: number; color?: string }) {
   return (
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity }]}>
-      {scienceIcons.map((icon, index) => <FloatingScienceIcon key={`${icon}-${index}`} icon={icon} index={index} />)}
+      {scienceIcons.map((Icon, index) => <FloatingIcon key={index} Icon={Icon} color={color} index={index} />)}
     </View>
   );
 }
 
-function FloatingScienceIcon({ icon, index }: { icon: IconName; index: number }) {
+function FloatingIcon({ Icon, color, index }: { Icon: IconComponent; color: string; index: number }) {
   const progress = useAnimatedValue(0);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ function FloatingScienceIcon({ icon, index }: { icon: IconName; index: number })
 
   return (
     <Animated.View style={[styles.icon, positions[index], { opacity, transform: [{ translateY }, { rotate }] }]}>
-      <MaterialCommunityIcons color="#A60E12" name={icon} size={34} />
+      <Icon color={color} size={34} weight="duotone" />
     </Animated.View>
   );
 }

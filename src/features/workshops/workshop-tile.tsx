@@ -1,50 +1,46 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ImageSquareIcon } from '@/components/icons';
 import { useColors } from '@/context/theme-context';
-import type { Workshop } from '@/data/workshops';
+import type { CatalogWorkshop } from '@/data/workshops';
+import { pressedStyle, textStyles } from '@/theme/common-styles';
+import { fonts } from '@/theme/fonts';
 
-/** Cuadro del catálogo con la portada del taller; al tocarlo abre su detalle. */
-export function WorkshopTile({ workshop }: { workshop: Workshop }) {
+/** Tarjeta del catálogo: portada, código del área, título y dato breve. Abre el detalle del taller. */
+export function WorkshopTile({ workshop }: { workshop: CatalogWorkshop }) {
   const colors = useColors();
   const coverSource = workshop.cover ?? workshop.images[0];
-  const hasCover = Boolean(coverSource);
+  const codeColor = workshop.area === 'tecnologia' ? colors.accent2 : colors.accent;
+  const meta = workshop.duration && !workshop.duration.includes('confirmar')
+    ? workshop.duration.replace('1 sesión de ', '')
+    : workshop.audience;
 
   return (
     <Pressable
       accessibilityLabel={`Abrir ${workshop.title}`}
       accessibilityRole="button"
       onPress={() => router.push({ pathname: '/workshop/[id]', params: { id: workshop.id } })}
-      style={({ pressed }) => [styles.tile, { borderColor: `${workshop.accent}70`, opacity: pressed ? 0.82 : 1 }]}
+      style={({ pressed }) => [styles.tile, { backgroundColor: colors.surface, borderColor: colors.line }, pressed && pressedStyle]}
     >
-      {hasCover
-        ? <Image contentFit="cover" source={coverSource} style={StyleSheet.absoluteFill} />
-        : <View style={[StyleSheet.absoluteFill, styles.fallback, { backgroundColor: `${workshop.accent}24` }]}>
-          <MaterialCommunityIcons color={workshop.accent} name="image-plus-outline" size={42} />
-          <Text style={[styles.pending, { color: workshop.accent }]}>Portada pendiente</Text>
-        </View>}
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: hasCover ? `${workshop.accent}B8` : `${workshop.accent}18` }]} />
-      <View style={styles.content}>
-        <Text style={[styles.eyebrow, !hasCover && { color: workshop.accent }]}>{workshop.eyebrow}</Text>
-        <Text style={[styles.title, !hasCover && { color: colors.text }]}>{workshop.title}</Text>
-        <View style={styles.action}>
-          <Text style={[styles.actionText, !hasCover && { color: workshop.accent }]}>Ver taller</Text>
-          <MaterialCommunityIcons color={hasCover ? '#FFFFFF' : workshop.accent} name="arrow-right" size={17} />
-        </View>
+      {coverSource
+        ? <Image contentFit="cover" source={coverSource} style={styles.cover} transition={200} />
+        : <View style={[styles.cover, styles.fallback, { backgroundColor: colors.soft }]}><ImageSquareIcon color={colors.muted} size={34} weight="duotone" /></View>}
+      <View style={styles.body}>
+        <Text style={[textStyles.label, { color: codeColor, fontSize: 10 }]}>{workshop.code}</Text>
+        <Text numberOfLines={2} style={[styles.title, { color: colors.text }]}>{workshop.title}</Text>
+        <Text numberOfLines={1} style={[styles.meta, { color: colors.muted }]}>{meta}</Text>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  tile: { width: '47%', aspectRatio: 1, borderRadius: 20, borderWidth: 1, overflow: 'hidden', backgroundColor: '#CBD5E1' },
-  fallback: { alignItems: 'center', justifyContent: 'center', gap: 8 },
-  pending: { fontSize: 11, fontWeight: '800' },
-  content: { flex: 1, justifyContent: 'flex-end', padding: 16 },
-  eyebrow: { color: '#FFFFFF', fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
-  title: { color: '#FFFFFF', fontSize: 20, lineHeight: 23, fontWeight: '900' },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 13 },
-  actionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  tile: { width: '48%', borderWidth: 1, borderRadius: 18, overflow: 'hidden' },
+  cover: { width: '100%', height: 112 },
+  fallback: { alignItems: 'center', justifyContent: 'center' },
+  body: { padding: 12 },
+  title: { fontFamily: fonts.display, fontSize: 16, lineHeight: 20, marginTop: 3 },
+  meta: { fontFamily: fonts.body, fontSize: 12, marginTop: 4 },
 });

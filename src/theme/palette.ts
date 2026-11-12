@@ -1,29 +1,36 @@
-// Colores de la app para modo claro y oscuro. Úsalos con el hook `useColors()`.
-export const palette = {
-  light: { background: '#F7FAFC', surface: '#FFFFFF', text: '#17202A', muted: '#718096', line: '#E2E8F0', blue: '#2463A5', blueSoft: '#E6F4FF', green: '#087F68', greenSoft: '#E7F8F1', orange: '#A85B00', orangeSoft: '#FFF4E5', purple: '#6941A5', purpleSoft: '#F2EAFE', danger: '#B42318' },
-  dark: { background: '#171923', surface: '#2D3748', text: '#F7FAFC', muted: '#E2E8F0', line: '#718096', blue: '#9BD7FF', blueSoft: '#234A67', green: '#75E0C2', greenSoft: '#205344', orange: '#FFD08A', orangeSoft: '#684B24', purple: '#D0B4FF', purpleSoft: '#4A3470', danger: '#FF9B93' },
+// Paletas del diseño "Final B".
+// - science: Inicio, Talleres, detalle de taller, login y admin (científica y moderna).
+// - lab: pestaña Niños y juegos (laboratorio de juegos: base científica + colores vivos).
+// Los colores de texto se eligieron para cumplir contraste mínimo 4.5:1 en ambos modos.
+
+export const science = {
+  light: {
+    background: '#F1F5F9', surface: '#FFFFFF', soft: '#E6EEF5', text: '#0B1B2B', muted: '#4A5D70', line: '#D5E0EA',
+    accent: '#0E7490', accent2: '#4338CA', onAccent: '#FFFFFF', grid: 'rgba(14, 116, 144, 0.08)',
+    navBackground: 'rgba(255, 255, 255, 0.96)', navActive: '#0B1B2B', onNavActive: '#E6F6FB',
+    danger: '#B42318', success: '#087F68',
+  },
+  dark: {
+    background: '#060C17', surface: '#0E1828', soft: '#13223A', text: '#E4EEF7', muted: '#8BA0B6', line: '#1E3048',
+    accent: '#22D3EE', accent2: '#A5B4FC', onAccent: '#04202A', grid: 'rgba(34, 211, 238, 0.07)',
+    navBackground: 'rgba(14, 24, 40, 0.96)', navActive: '#22D3EE', onNavActive: '#04202A',
+    danger: '#FF9B93', success: '#5DE0BF',
+  },
 } as const;
 
-export type ThemeMode = keyof typeof palette;
-export type Colors = (typeof palette)[ThemeMode];
+export const lab = {
+  light: {
+    background: '#EEF6FB', surface: '#FFFFFF', specimen: '#DDF5FA', text: '#0B1B2B', muted: '#4A5D70', label: '#0E7490',
+    line: '#0B1B2B', shadow: '#0E7490', onBright: '#0B1B2B', grid: 'rgba(14, 116, 144, 0.10)',
+    cyan: '#4FD6EC', lime: '#B8F171', amber: '#FFC857', pink: '#FF9EC4',
+  },
+  dark: {
+    background: '#060C17', surface: '#0E1828', specimen: '#0F2A3D', text: '#E4EEF7', muted: '#9DB1C5', label: '#22D3EE',
+    line: '#22D3EE', shadow: '#0891B2', onBright: '#04202A', grid: 'rgba(34, 211, 238, 0.09)',
+    cyan: '#22D3EE', lime: '#A3E635', amber: '#FBBF24', pink: '#F472B6',
+  },
+} as const;
 
-// En modo oscuro, los acentos de cada taller se aclaran para conservar el contraste.
-const darkModeAccents: Record<string, string> = {
-  '#087F68': '#5DE0BF',
-  '#2463A5': '#8CCFFF',
-  '#A85B00': '#FFBE72',
-  '#6941A5': '#C4B5FD',
-  '#4F7C3A': '#A9D77B',
-  '#168A70': '#65E0BF',
-  '#C04A78': '#FF9CC1',
-  '#315A8A': '#91C7FF',
-  '#B54708': '#FFB36B',
-  '#A60E12': '#FF8F8A',
-  '#7A4EAB': '#CFB2FF',
-  '#5C6F35': '#C7E47B',
-  '#8B5E3C': '#E1AA7B',
-};
-
-export function getWorkshopAccent(accent: string, mode: ThemeMode) {
-  return mode === 'dark' ? darkModeAccents[accent] ?? accent : accent;
-}
+export type ThemeMode = keyof typeof science;
+export type Colors = (typeof science)[ThemeMode];
+export type LabColors = (typeof lab)[ThemeMode];

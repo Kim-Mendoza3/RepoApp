@@ -1,18 +1,24 @@
 import { StyleSheet } from 'react-native';
 
-// Estilos que se repiten en varias pantallas.
+import { fonts } from '@/theme/fonts';
+
+// Estilos de texto que se repiten en varias pantallas.
 export const textStyles = StyleSheet.create({
-  eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 },
-  pageTitle: { fontSize: 30, lineHeight: 34, fontWeight: '900', marginBottom: 24 },
-  heading: { fontSize: 21, fontWeight: '800', marginBottom: 16 },
-  body: { fontSize: 15, lineHeight: 22 },
-  cardTitle: { fontSize: 17, fontWeight: '800', marginBottom: 4 },
-  cardSubtitle: { fontSize: 12, lineHeight: 18 },
+  /** Etiqueta tipo código, p. ej. "// catálogo · 13 talleres". */
+  label: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 0.2 },
+  /** Título grande de pantalla. */
+  pageTitle: { fontFamily: fonts.display, fontSize: 32, lineHeight: 36, letterSpacing: -0.6 },
+  /** Título de sección o de tarjeta destacada. */
+  heading: { fontFamily: fonts.display, fontSize: 21, lineHeight: 26, letterSpacing: -0.3 },
+  /** Título de tarjeta pequeña. */
+  cardTitle: { fontFamily: fonts.display, fontSize: 16, lineHeight: 20 },
+  body: { fontFamily: fonts.body, fontSize: 15, lineHeight: 23 },
+  small: { fontFamily: fonts.body, fontSize: 12, lineHeight: 17 },
 });
 
-export const glassStyles = StyleSheet.create({
-  surface: { shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
+export const shadowStyles = StyleSheet.create({
+  soft: { shadowColor: '#06101F', shadowOpacity: 0.1, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 3 },
 });
 
 // Efecto al presionar botones y tarjetas.
-export const pressedStyle = { opacity: 0.7, transform: [{ scale: 0.97 }] } as const;
+export const pressedStyle = { opacity: 0.75, transform: [{ scale: 0.97 }] } as const;

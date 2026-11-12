@@ -1,96 +1,144 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
+import { useState, type ComponentType } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GridBackground } from '@/components/grid-background';
+import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, GraduationCapIcon, LightbulbIcon, ShieldCheckIcon, UsersIcon } from '@/components/icons';
 import { WorkshopCarousel } from '@/components/workshop-carousel';
-import { useAppTheme, useColors } from '@/context/theme-context';
-import { workshops } from '@/data/workshops';
-import { getWorkshopAccent } from '@/theme/palette';
+import { useColors } from '@/context/theme-context';
+import { catalog } from '@/data/workshops';
+import { pressedStyle, textStyles } from '@/theme/common-styles';
+import { fonts } from '@/theme/fonts';
+
+type IconComponent = ComponentType<{ color?: string; size?: number; weight?: 'duotone' | 'bold' }>;
+
+const AUDIENCE = 'Preescolar, primaria, secundaria, bachillerato y universidad';
+const DURATION = '25 min a 1 h';
+const CAPACITY = '10 a 25 participantes';
 
 // PANTALLA DETALLE DE TALLER.
 export default function WorkshopDetailScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const workshop = workshops.find((item) => item.id === id) ?? workshops.find((item) => item.id === 'robotica');
-  const { mode } = useAppTheme();
+  const workshop = catalog.find((item) => item.id === id) ?? catalog.find((item) => item.id === 'robotica');
   const colors = useColors();
-  const accent = getWorkshopAccent(workshop?.accent ?? '#2463A5', mode);
-  const audienceText = 'Preescolar, primaria, secundaria, bachillerato y universidad';
-  const durationText = '25 min a 1 h';
-  const capacityText = '10 a 25 participantes';
-  const backgroundSource = workshop?.cover ?? workshop?.images[0];
-  const hasBackground = Boolean(backgroundSource);
   const [carouselGestureActive, setCarouselGestureActive] = useState(false);
 
   if (!workshop) return null;
+  const cover = workshop.cover ?? workshop.images[0];
+  const takeaways = workshop.takeaways ?? ['Una experiencia para aprender haciendo', 'Nuevas preguntas para seguir explorando'];
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top']}>
-      {hasBackground && <Image contentFit="cover" source={backgroundSource} style={styles.backgroundImage} />}
-      {hasBackground && <View pointerEvents="none" style={[styles.backgroundShade, { backgroundColor: mode === 'dark' ? 'rgba(23,25,35,0.72)' : 'rgba(247,250,252,0.72)' }]} />}
+    <SafeAreaView style={[styles.flex, { backgroundColor: colors.background }]} edges={['top']}>
+      <GridBackground color={colors.grid} />
       <ScrollView contentContainerStyle={styles.content} scrollEnabled={!carouselGestureActive}>
-        <Pressable accessibilityLabel="Regresar" accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-          <MaterialCommunityIcons color={colors.text} name="arrow-left" size={23} />
+        <Pressable
+          accessibilityLabel="Regresar a talleres"
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.back, { backgroundColor: colors.surface, borderColor: colors.line }, pressed && pressedStyle]}
+        >
+          <ArrowLeftIcon color={colors.text} size={18} weight="bold" />
           <Text style={[styles.backText, { color: colors.text }]}>Talleres</Text>
         </Pressable>
-        <View style={[styles.header, { borderBottomColor: `${accent}70` }]}>
-          <Text style={[styles.eyebrow, { color: accent }]}>{workshop.eyebrow}</Text>
-          <Text style={[styles.title, { color: colors.text }]}>{workshop.title}</Text>
-          <Text style={[styles.hook, { color: accent }]}>{workshop.hook ?? 'Una experiencia para descubrir, experimentar y hacer preguntas.'}</Text>
-          <Text style={[styles.description, { color: colors.muted }]}>{workshop.description}</Text>
-          <View style={[styles.audienceCard, { backgroundColor: `${accent}18`, borderColor: `${accent}65` }]}>
-            <MaterialCommunityIcons color={accent} name="school-outline" size={21} />
-            <View style={styles.metaCopy}><Text style={[styles.metaLabel, { color: accent }]}>DIRIGIDO A</Text><Text style={[styles.audience, { color: colors.text }]}>{audienceText}</Text><Text style={[styles.metaHint, { color: colors.muted }]}>Se adapta a cualquier edad y grupo.</Text></View>
+
+        {cover ? (
+          <View style={[styles.coverFrame, { borderColor: colors.line }]}>
+            <Image accessibilityLabel={`Portada de ${workshop.title}`} contentFit="cover" source={cover} style={styles.cover} transition={200} />
+            <View style={[styles.codeBadge, { backgroundColor: colors.accent }]}>
+              <Text style={[textStyles.label, { color: colors.onAccent }]}>{workshop.code}</Text>
+            </View>
           </View>
-          <View style={styles.metaRow}>
-            <View style={[styles.metaPill, { backgroundColor: `${accent}22`, borderColor: `${accent}45` }]}><MaterialCommunityIcons color={accent} name="clock-outline" size={17} /><View style={styles.metaCopy}><Text style={[styles.metaLabel, { color: accent }]}>DURACIÓN</Text><Text style={[styles.metaPillText, { color: colors.text }]}>{durationText}</Text></View></View>
-            <View style={[styles.metaPill, { backgroundColor: `${accent}22`, borderColor: `${accent}45` }]}><MaterialCommunityIcons color={accent} name="account-multiple-outline" size={17} /><View style={styles.metaCopy}><Text style={[styles.metaLabel, { color: accent }]}>PARTICIPANTES</Text><Text style={[styles.metaPillText, { color: colors.text }]}>{capacityText}</Text></View></View>
+        ) : null}
+
+        <Text style={[textStyles.label, { color: colors.accent }]}>{`// ${workshop.eyebrow.toLowerCase()}`}</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{workshop.title}</Text>
+        <Text style={[styles.hook, { color: colors.accent }]}>{workshop.hook ?? 'Una experiencia para descubrir, experimentar y hacer preguntas.'}</Text>
+        <Text style={[textStyles.body, { color: colors.muted }]}>{workshop.description}</Text>
+
+        <View style={[styles.audience, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+          <GraduationCapIcon color={colors.accent} size={24} weight="duotone" />
+          <View style={styles.metaCopy}>
+            <Text style={[textStyles.label, { color: colors.accent, fontSize: 10 }]}>DIRIGIDO A</Text>
+            <Text style={[styles.metaValue, { color: colors.text }]}>{AUDIENCE}</Text>
+            <Text style={[textStyles.small, { color: colors.muted }]}>Se adapta a cualquier edad y grupo.</Text>
           </View>
         </View>
-        <View style={[styles.infoSection, { backgroundColor: `${colors.surface}E8`, borderColor: colors.line }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Lo que van a vivir</Text>
-          {workshop.activities.map((activity) => <View key={activity} style={styles.activity}><MaterialCommunityIcons color={accent} name="check-circle-outline" size={19} /><Text style={[styles.activityText, { color: colors.muted }]}>{activity}</Text></View>)}
+        <View style={styles.metaRow}>
+          <MetaPill Icon={ClockIcon} label="DURACIÓN" value={DURATION} />
+          <MetaPill Icon={UsersIcon} label="PARTICIPANTES" value={CAPACITY} />
         </View>
-        <View style={[styles.infoSection, { backgroundColor: `${accent}18`, borderColor: `${accent}70` }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Al terminar</Text>
-          {(workshop.takeaways ?? ['Una experiencia para aprender haciendo', 'Nuevas preguntas para seguir explorando']).map((takeaway) => <View key={takeaway} style={styles.activity}><MaterialCommunityIcons color={accent} name="lightbulb-on-outline" size={19} /><Text style={[styles.activityText, { color: colors.muted }]}>{takeaway}</Text></View>)}
-        </View>
-        {workshop.safetyNote && <View style={[styles.safetyNote, { backgroundColor: `${accent}18`, borderColor: `${accent}70` }]}><MaterialCommunityIcons color={accent} name="shield-check-outline" size={22} /><Text style={[styles.safetyText, { color: colors.text }]}>{workshop.safetyNote}</Text></View>}
-        <WorkshopCarousel colors={{ ...colors, surface: `${colors.surface}E8`, blue: accent }} minimal onHorizontalGesture={setCarouselGestureActive} slides={workshop.images.map((image, imageIndex) => ({ workshopId: workshop.id, title: workshop.title, eyebrow: workshop.eyebrow, accent, image, imageIndex }))} />
+
+        <Section title="Lo que van a vivir" Icon={CheckCircleIcon} items={workshop.activities} />
+        <Section title="Al terminar" Icon={LightbulbIcon} items={takeaways} />
+
+        {workshop.safetyNote ? (
+          <View style={[styles.safety, { backgroundColor: colors.soft, borderColor: colors.line }]}>
+            <ShieldCheckIcon color={colors.accent} size={24} weight="duotone" />
+            <Text style={[styles.safetyText, { color: colors.text }]}>{workshop.safetyNote}</Text>
+          </View>
+        ) : null}
+
+        {workshop.images.length > 0 ? (
+          <WorkshopCarousel
+            colors={colors}
+            minimal
+            onHorizontalGesture={setCarouselGestureActive}
+            slides={workshop.images.map((image, imageIndex) => ({ workshopId: workshop.id, title: workshop.title, eyebrow: workshop.eyebrow, accent: colors.accent, image, imageIndex }))}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+function MetaPill({ Icon, label, value }: { Icon: IconComponent; label: string; value: string }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.metaPill, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+      <Icon color={colors.accent} size={20} weight="duotone" />
+      <View style={styles.metaCopy}>
+        <Text style={[textStyles.label, { color: colors.accent, fontSize: 10 }]}>{label}</Text>
+        <Text style={[styles.metaValue, { color: colors.text }]}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+function Section({ title, Icon, items }: { title: string; Icon: IconComponent; items: string[] }) {
+  const colors = useColors();
+  return (
+    <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+      <Text style={[textStyles.heading, { color: colors.text, fontSize: 19 }]}>{title}</Text>
+      {items.map((item) => (
+        <View key={item} style={styles.item}>
+          <Icon color={colors.accent} size={20} weight="duotone" />
+          <Text style={[styles.itemText, { color: colors.muted }]}>{item}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  backgroundImage: { ...StyleSheet.absoluteFill, opacity: 1 },
-  backgroundShade: { ...StyleSheet.absoluteFill },
-  content: { padding: 20, paddingBottom: 40 },
-  backButton: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, marginBottom: 22 },
-  backText: { fontSize: 15, fontWeight: '800' },
-  header: { borderBottomWidth: 1, paddingBottom: 22, marginBottom: 20 },
-  eyebrow: { fontSize: 11, fontWeight: '900', letterSpacing: 1.2, marginBottom: 7 },
-  title: { fontSize: 34, lineHeight: 39, fontWeight: '900', marginBottom: 10 },
-  hook: { fontSize: 18, lineHeight: 24, fontWeight: '800', marginBottom: 12 },
-  description: { fontSize: 16, lineHeight: 24 },
-  audienceCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderWidth: 1, borderRadius: 16, padding: 12, marginTop: 17 },
-  audience: { fontSize: 13, fontWeight: '800', lineHeight: 18 },
+  flex: { flex: 1 },
+  content: { padding: 22, paddingBottom: 40, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  back: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, marginBottom: 16 },
+  backText: { fontFamily: fonts.bodySemi, fontSize: 14 },
+  coverFrame: { borderWidth: 1, borderRadius: 20, overflow: 'hidden', marginBottom: 18 },
+  cover: { width: '100%', height: 210 },
+  codeBadge: { position: 'absolute', left: 12, top: 12, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  title: { fontFamily: fonts.display, fontSize: 32, lineHeight: 36, letterSpacing: -0.6, marginTop: 6 },
+  hook: { fontFamily: fonts.displaySemi, fontSize: 18, lineHeight: 24, marginTop: 10, marginBottom: 10 },
+  audience: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, borderWidth: 1, borderRadius: 16, padding: 14, marginTop: 18 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10, marginBottom: 20 },
+  metaPill: { flex: 1, minWidth: 140, flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderWidth: 1, borderRadius: 16, padding: 12 },
   metaCopy: { flex: 1, gap: 2 },
-  metaLabel: { fontSize: 9, fontWeight: '900', letterSpacing: 1 },
-  metaHint: { fontSize: 11, lineHeight: 16, marginTop: 2 },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  metaPill: { flex: 1, minWidth: 145, flexDirection: 'row', alignItems: 'flex-start', gap: 7, borderWidth: 1, borderRadius: 16, padding: 11 },
-  metaPillText: { fontSize: 12, fontWeight: '800', lineHeight: 17 },
-  infoSection: { borderWidth: 1, borderRadius: 18, padding: 17, marginBottom: 25 },
-  sectionTitle: { fontSize: 20, fontWeight: '900', marginBottom: 14 },
-  activity: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, marginTop: 10 },
-  activityText: { flex: 1, fontSize: 15, lineHeight: 21 },
-  safetyNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderWidth: 1, borderRadius: 16, padding: 15, marginBottom: 25 },
-  safetyText: { flex: 1, fontSize: 13, lineHeight: 19, fontWeight: '700' },
-  galleryTitle: { marginBottom: 13 },
-  mosaic: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  mosaicImage: { width: '48.5%', aspectRatio: 1, borderRadius: 12, backgroundColor: '#CBD5E1' },
+  metaValue: { fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 18 },
+  section: { borderWidth: 1, borderRadius: 18, padding: 16, marginBottom: 16 },
+  item: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 12 },
+  itemText: { flex: 1, fontFamily: fonts.body, fontSize: 15, lineHeight: 21 },
+  safety: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 20 },
+  safetyText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19 },
 });

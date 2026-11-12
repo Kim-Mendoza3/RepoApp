@@ -1,9 +1,11 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Image } from 'expo-image';
 import { useEffect, useMemo, useState } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, Text, useAnimatedValue, useAnimatedValueXY, View } from 'react-native';
 
-import { useColors } from '@/context/theme-context';
+import { ArrowLeftIcon, HandSwipeRightIcon, StarIcon } from '@/components/icons';
+import { useLabColors } from '@/context/theme-context';
+import { pressedStyle } from '@/theme/common-styles';
+import { fonts } from '@/theme/fonts';
 
 type FoodItem = { name: string; emoji: string; edible: boolean; color: string };
 
@@ -20,9 +22,17 @@ const ROUND_MS = 8500;
 const snakeSource = require('@/assets/images/serpiente-normal.png');
 const habitatSource = require('@/assets/images/habitat-serpiente.jpg');
 
+type ReptileGameProps = {
+  onExit: () => void;
+  /** Avisa cuando el dedo toma o suelta la comida, para que la pantalla congele su scroll. */
+  onDraggingChange?: (dragging: boolean) => void;
+};
+
 /** Juego "Dibu y su merienda": arrastra cada comida hasta la serpiente si es algo que puede comer. */
-export function ReptileGame({ onExit }: { onExit: () => void }) {
-  const colors = useColors();
+export function ReptileGame({ onExit, onDraggingChange }: ReptileGameProps) {
+  const lab = useLabColors();
+  // Estilo "estampa" de laboratorio: borde grueso y sombra sólida.
+  const stamp = { borderColor: lab.line, borderWidth: 2, shadowColor: lab.shadow, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 4 }, elevation: 0 };
   const [foodIndex, setFoodIndex] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [score, setScore] = useState(0);
@@ -62,11 +72,17 @@ export function ReptileGame({ onExit }: { onExit: () => void }) {
     // Una vez que el dedo toma la comida, no se la cedemos al scroll ni a otros gestos.
     onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: () => {
+      onDraggingChange?.(true);
       foodPosition.extractOffset();
       setFeedback(null);
     },
     onPanResponderMove: (_event, gestureState) => foodPosition.setValue({ x: gestureState.dx, y: gestureState.dy }),
+    onPanResponderTerminate: () => {
+      onDraggingChange?.(false);
+      foodPosition.flattenOffset();
+    },
     onPanResponderRelease: (_event, gestureState) => {
+      onDraggingChange?.(false);
       foodPosition.flattenOffset();
       const reachedSnake = gestureState.dx > 55 && Math.abs(gestureState.dy) < 105;
       if (!reachedSnake) return;
@@ -78,28 +94,31 @@ export function ReptileGame({ onExit }: { onExit: () => void }) {
         Animated.spring(reactionScale, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 5 }),
       ]).start();
     },
-  }), [currentFood, foodPosition, reactionScale]);
+  }), [currentFood, foodPosition, reactionScale, onDraggingChange]);
 
   const correct = feedback === 'correct';
 
   return (
     <View>
       <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" onPress={onExit} style={styles.backButton}>
-          <MaterialCommunityIcons color={colors.text} name="arrow-left" size={20} />
-          <Text style={[styles.backText, { color: colors.text }]}>Salir</Text>
+        <Pressable accessibilityRole="button" onPress={onExit} style={({ pressed }) => [styles.backButton, stamp, { backgroundColor: lab.surface }, pressed && pressedStyle]}>
+          <ArrowLeftIcon color={lab.text} size={18} weight="bold" />
+          <Text style={[styles.backText, { color: lab.text }]}>Salir</Text>
         </Pressable>
-        <View style={styles.scorePill}><Text style={styles.scoreEmoji}>⭐</Text><Text style={styles.scoreText}>{score} aciertos</Text></View>
+        <View accessibilityLabel={`${score} aciertos`} style={[styles.scorePill, stamp, { backgroundColor: lab.amber }]}>
+          <StarIcon color={lab.onBright} size={16} weight="fill" />
+          <Text style={[styles.scoreText, { color: lab.onBright }]}>{score} aciertos</Text>
+        </View>
       </View>
-      <View style={styles.header}>
+      <View style={[styles.header, stamp, { backgroundColor: lab.surface }]}>
         <View style={styles.headerCopy}>
-          <Text style={styles.kicker}>MISIÓN: ALIMENTAR</Text>
-          <Text style={styles.headerTitle}>¿Qué puede comer?</Text>
-          <Text style={styles.headerText}>Observa la comida y llévala hasta la serpiente.</Text>
+          <Text style={[styles.kicker, { color: lab.label }]}>{'// misión 01 · alimentar'}</Text>
+          <Text style={[styles.headerTitle, { color: lab.text }]}>¿Qué puede comer?</Text>
+          <Text style={[styles.headerText, { color: lab.muted }]}>Observa la comida y llévala hasta la serpiente.</Text>
         </View>
         <Image contentFit="contain" source={snakeSource} style={styles.headerSnake} />
       </View>
-      <View style={styles.scene}>
+      <View style={[styles.scene, { borderColor: lab.line }]}>
         <Image contentFit="cover" pointerEvents="none" source={habitatSource} style={StyleSheet.absoluteFill} />
         <Text style={[styles.cloud, styles.cloudOne]}>☁️</Text>
         <Text style={[styles.cloud, styles.cloudTwo]}>☁️</Text>
@@ -130,14 +149,14 @@ export function ReptileGame({ onExit }: { onExit: () => void }) {
       </View>
       <View style={styles.roundRow}>
         <View>
-          <Text style={[styles.roundLabel, { color: colors.green }]}>APARECIÓ...</Text>
-          <Text style={[styles.foodName, { color: colors.text }]}>{currentFood.name}</Text>
+          <Text style={[styles.roundLabel, { color: lab.label }]}>{'// apareció…'}</Text>
+          <Text style={[styles.foodName, { color: lab.text }]}>{currentFood.name}</Text>
         </View>
-        <Text style={styles.foodTimer}>⏱️ Cada ronda</Text>
+        <Text style={[styles.foodTimer, { color: lab.muted }]}>nueva cada ronda</Text>
       </View>
-      <View style={styles.dragHint}>
-        <MaterialCommunityIcons color="#F97316" name="gesture-swipe" size={24} />
-        <Text style={styles.dragHintText}>Arrastra la comida por todo el hábitat. Acércala a Dibu para alimentarlo.</Text>
+      <View style={[styles.dragHint, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
+        <HandSwipeRightIcon color={lab.text} size={24} weight="duotone" />
+        <Text style={[styles.dragHintText, { color: lab.text }]}>Arrastra la comida por el hábitat y acércala a Dibu para alimentarlo.</Text>
       </View>
       {feedback && (
         <View style={[styles.feedbackCard, { backgroundColor: correct ? '#DCFCE7' : '#FFE4E6', borderColor: correct ? '#16A34A' : '#E11D48' }]}>
@@ -153,20 +172,18 @@ export function ReptileGame({ onExit }: { onExit: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backButton: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 18 },
-  backText: { fontSize: 14, fontWeight: '800' },
-  scorePill: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: '#FEF3C7' },
-  scoreEmoji: { fontSize: 16 },
-  scoreText: { color: '#92400E', fontSize: 12, fontWeight: '900' },
-  // Fondo verde oscuro para que el texto claro del encabezado tenga contraste.
-  header: { minHeight: 126, borderRadius: 24, padding: 18, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', marginBottom: 14, backgroundColor: '#166534' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 44, borderRadius: 14, paddingHorizontal: 14 },
+  backText: { fontFamily: fonts.bodyBold, fontSize: 14 },
+  scorePill: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40, borderRadius: 999, paddingHorizontal: 12 },
+  scoreText: { fontFamily: fonts.monoBold, fontSize: 12 },
+  header: { minHeight: 120, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center', overflow: 'hidden', marginBottom: 12 },
   headerCopy: { flex: 1 },
-  kicker: { color: '#BBF7D0', fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-  headerTitle: { color: '#FFFFFF', fontSize: 25, fontWeight: '900', marginTop: 4 },
-  headerText: { color: '#DCFCE7', fontSize: 12, lineHeight: 17, marginTop: 5 },
+  kicker: { fontFamily: fonts.monoBold, fontSize: 11 },
+  headerTitle: { fontFamily: fonts.display, fontSize: 24, lineHeight: 28, marginTop: 4 },
+  headerText: { fontFamily: fonts.body, fontSize: 12, lineHeight: 17, marginTop: 4 },
   headerSnake: { width: 82, height: 72, transform: [{ rotate: '-12deg' }] },
-  scene: { height: 230, borderRadius: 24, borderWidth: 2, marginTop: 14, overflow: 'hidden', position: 'relative' },
+  scene: { height: 230, borderRadius: 22, borderWidth: 2, marginTop: 14, overflow: 'hidden', position: 'relative' },
   cloud: { position: 'absolute', fontSize: 25, opacity: 0.8 },
   cloudOne: { left: 80, top: 16 },
   cloudTwo: { left: 190, top: 42, transform: [{ scale: 0.75 }] },
@@ -181,18 +198,18 @@ const styles = StyleSheet.create({
   foodEmoji: { fontSize: 42 },
   snakeCharacter: { position: 'absolute', left: '42%', bottom: 25, alignItems: 'center' },
   snakeImage: { width: 158, height: 112, transform: [{ rotate: '-7deg' }] },
-  snakeName: { backgroundColor: '#166534', borderRadius: 10, color: '#FFFFFF', fontSize: 11, fontWeight: '900', paddingHorizontal: 8, paddingVertical: 3, marginTop: -14 },
+  snakeName: { backgroundColor: '#166534', borderRadius: 10, color: '#FFFFFF', fontFamily: fonts.monoBold, fontSize: 11, paddingHorizontal: 8, paddingVertical: 3, marginTop: -14, overflow: 'hidden' },
   reactionBubble: { position: 'absolute', right: 63, bottom: 96, width: 58, height: 48, borderRadius: 22, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#FBBF24' },
   reactionEmoji: { fontSize: 22 },
   roundRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 15, marginBottom: 8 },
-  roundLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
-  foodName: { fontSize: 21, fontWeight: '900', marginTop: 2 },
-  foodTimer: { color: '#64748B', fontSize: 11, fontWeight: '800' },
-  dragHint: { minHeight: 47, borderRadius: 15, backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FDBA74', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 10 },
-  dragHintText: { color: '#9A3412', fontSize: 13, fontWeight: '900' },
+  roundLabel: { fontFamily: fonts.monoBold, fontSize: 11 },
+  foodName: { fontFamily: fonts.display, fontSize: 22, lineHeight: 26, marginTop: 2 },
+  foodTimer: { fontFamily: fonts.mono, fontSize: 11 },
+  dragHint: { minHeight: 50, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, marginTop: 10 },
+  dragHintText: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 18 },
   feedbackCard: { borderRadius: 18, borderWidth: 2, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
   feedbackEmoji: { fontSize: 31 },
   feedbackCopy: { flex: 1 },
-  feedbackTitle: { fontSize: 16, fontWeight: '900' },
-  feedbackText: { color: '#334155', fontSize: 12, lineHeight: 17, marginTop: 2 },
+  feedbackTitle: { fontFamily: fonts.display, fontSize: 17 },
+  feedbackText: { color: '#334155', fontFamily: fonts.body, fontSize: 12, lineHeight: 17, marginTop: 2 },
 });

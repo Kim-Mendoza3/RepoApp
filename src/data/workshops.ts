@@ -208,6 +208,47 @@ export const workshops: Workshop[] = [
   },
 ];
 
+// ÁREAS DEL CATÁLOGO: alimentan los filtros de la pestaña Talleres y las etiquetas tipo "BIO-01".
+export type WorkshopArea = 'biologia' | 'fisica' | 'quimica' | 'tecnologia' | 'creatividad';
+
+export const workshopAreas: { id: WorkshopArea; label: string; prefix: string }[] = [
+  { id: 'biologia', label: 'Biología', prefix: 'BIO' },
+  { id: 'fisica', label: 'Física', prefix: 'FÍS' },
+  { id: 'quimica', label: 'Química', prefix: 'QUÍ' },
+  { id: 'tecnologia', label: 'Tecnología', prefix: 'TEC' },
+  { id: 'creatividad', label: 'Creatividad', prefix: 'CRE' },
+];
+
+const areaById: Record<string, WorkshopArea> = {
+  insectos: 'biologia',
+  robotica: 'tecnologia',
+  'burbujas-fuego': 'quimica',
+  'fluidos-no-newtonianos': 'fisica',
+  reptiles: 'biologia',
+  'huertos-urbanos': 'biologia',
+  origami: 'creatividad',
+  'estrellas-astronomia': 'fisica',
+  cohetes: 'fisica',
+  'reacciones-quimicas': 'quimica',
+  plasma: 'fisica',
+  mosquitos: 'biologia',
+  aracnidos: 'biologia',
+};
+
+export type CatalogWorkshop = Workshop & { area: WorkshopArea; code: string };
+
+/** Talleres con su área y su código (BIO-01, FÍS-02…), numerados en orden dentro de cada área. */
+export const catalog: CatalogWorkshop[] = (() => {
+  const counters: Partial<Record<WorkshopArea, number>> = {};
+  return workshops.map((workshop) => {
+    const area = areaById[workshop.id] ?? 'creatividad';
+    const count = (counters[area] ?? 0) + 1;
+    counters[area] = count;
+    const prefix = workshopAreas.find((item) => item.id === area)?.prefix ?? 'TAL';
+    return { ...workshop, area, code: `${prefix}-${String(count).padStart(2, '0')}` };
+  });
+})();
+
 export const mixedWorkshopSlides = workshops.flatMap((workshop) => workshop.images.slice(0, 1).map((image, imageIndex) => ({
   workshopId: workshop.id,
   title: workshop.title,

@@ -1,39 +1,54 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
-import type { ComponentProps } from 'react';
+import type { ComponentType } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { FlaskIcon, HouseIcon, SmileyIcon, SquaresFourIcon } from '@/components/icons';
+import { prepareTabTransition, TAB_ORDER, type TabName } from '@/components/tab-transition';
 import { useAuth } from '@/context/auth-context';
-import { useColors } from '@/context/theme-context';
+import { useAppTheme, useColors, useLabColors } from '@/context/theme-context';
+import { fonts } from '@/theme/fonts';
 
-type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
+type IconComponent = ComponentType<{ color?: string; size?: number; weight?: 'duotone' | 'fill' | 'regular' | 'bold' }>;
 
-// Botones de la barra, EN EL ORDEN EN QUE SE MUESTRAN. `name` es el nombre del archivo en src/app/(app)/.
-const tabs: { name: string; label: string; icon: IconName; staffOnly?: boolean }[] = [
-  { name: 'index', label: 'Inicio', icon: 'home-variant-outline' },
-  { name: 'talleres', label: 'Talleres', icon: 'school-outline' },
-  { name: 'ninos', label: 'Niños', icon: 'flask-outline' },
-  { name: 'admin', label: 'Admin', icon: 'view-dashboard-outline', staffOnly: true },
-];
+// Etiqueta e ícono de cada botón. El orden en pantalla lo define TAB_ORDER.
+const tabs: Record<TabName, { label: string; Icon: IconComponent; staffOnly?: boolean }> = {
+  index: { label: 'Inicio', Icon: HouseIcon },
+  talleres: { label: 'Talleres', Icon: FlaskIcon },
+  ninos: { label: 'Niños', Icon: SmileyIcon },
+  admin: { label: 'Admin', Icon: SquaresFourIcon, staffOnly: true },
+};
 
-/** Barra de pestañas flotante. Expo Router le pasa las rutas y la forma de navegar entre ellas. */
+/** Barra de pestañas flotante. En Niños cambia al estilo "laboratorio de juegos". */
 export function BottomNav({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const colors = useColors();
+  const labColors = useLabColors();
+  const { mode } = useAppTheme();
   const { isStaff } = useAuth();
   const focusedName = state.routes[state.index]?.name;
+  const isLab = focusedName === 'ninos';
+
+  const barStyle = isLab
+    ? { backgroundColor: labColors.surface, borderColor: labColors.line, borderWidth: 2, borderRadius: 22, shadowColor: labColors.shadow, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 5 }, elevation: 0 }
+    : { backgroundColor: colors.navBackground, borderColor: colors.line, borderWidth: 1, borderRadius: 20, shadowColor: '#06101F', shadowOpacity: mode === 'dark' ? 0.4 : 0.14, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8 };
+  const activeBackground = isLab ? labColors.lime : colors.navActive;
+  const activeText = isLab ? labColors.onBright : colors.onNavActive;
+  const inactiveText = isLab ? labColors.muted : colors.muted;
 
   return (
-    <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-      {tabs.map((tab) => {
-        const route = state.routes.find((item) => item.name === tab.name);
+    <View style={[styles.bar, barStyle]}>
+      {TAB_ORDER.map((name) => {
+        const tab = tabs[name];
+        const route = state.routes.find((item) => item.name === name);
         if (!route || (tab.staffOnly && !isStaff)) return null;
-        const focused = focusedName === tab.name;
-        const color = focused ? colors.blue : colors.muted;
+        const focused = focusedName === name;
+        const color = focused ? activeText : inactiveText;
 
         const onPress = () => {
           // Mismo patrón que la barra oficial: avisa del toque y, si nadie lo cancela, cambia de pestaña.
           const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-          if (!focused && !event.defaultPrevented) navigateToTab(route.key);
+          if (focused || event.defaultPrevented) return;
+          prepareTabTransition(focusedName, name);
+          navigateToTab(route.key);
         };
 
         return (
@@ -43,9 +58,9 @@ export function BottomNav({ state, emitter, navigateToTab }: BottomTabBarProps) 
             accessibilityState={{ selected: focused }}
             key={route.key}
             onPress={onPress}
-            style={styles.item}
+            style={[styles.item, focused && { backgroundColor: activeBackground }]}
           >
-            <MaterialCommunityIcons color={color} name={tab.icon} size={22} />
+            <tab.Icon color={color} size={23} weight={focused ? 'fill' : 'duotone'} />
             <Text style={[styles.label, { color }]}>{tab.label}</Text>
           </Pressable>
         );
@@ -55,7 +70,7 @@ export function BottomNav({ state, emitter, navigateToTab }: BottomTabBarProps) 
 }
 
 const styles = StyleSheet.create({
-  bar: { position: 'absolute', bottom: 18, left: 20, right: 20, height: 72, borderRadius: 24, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', elevation: 5 },
-  item: { alignItems: 'center', gap: 2, minWidth: 58 },
-  label: { fontSize: 11, fontWeight: '700' },
+  bar: { position: 'absolute', bottom: 20, left: 16, right: 16, height: 72, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 9 },
+  item: { flex: 1, height: 54, borderRadius: 15, alignItems: 'center', justifyContent: 'center', gap: 3 },
+  label: { fontFamily: fonts.bodySemi, fontSize: 11 },
 });

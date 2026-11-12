@@ -1,0 +1,41 @@
+// Íconos Phosphor (https://phosphoricons.com) que usa la app.
+// Se importa cada uno por separado para que la app no cargue los más de mil íconos del paquete.
+// Uso: <HouseIcon size={22} color={colors.text} weight="duotone" />
+export { ArrowLeftIcon } from 'phosphor-react-native/src/icons/ArrowLeft';
+export { ArrowRightIcon } from 'phosphor-react-native/src/icons/ArrowRight';
+export { AtomIcon } from 'phosphor-react-native/src/icons/Atom';
+export { BugIcon } from 'phosphor-react-native/src/icons/Bug';
+export { CalendarStarIcon } from 'phosphor-react-native/src/icons/CalendarStar';
+export { CheckCircleIcon } from 'phosphor-react-native/src/icons/CheckCircle';
+export { ClockIcon } from 'phosphor-react-native/src/icons/Clock';
+export { DnaIcon } from 'phosphor-react-native/src/icons/Dna';
+export { EyeIcon } from 'phosphor-react-native/src/icons/Eye';
+export { FlaskIcon } from 'phosphor-react-native/src/icons/Flask';
+export { GlobeIcon } from 'phosphor-react-native/src/icons/Globe';
+export { GoogleLogoIcon } from 'phosphor-react-native/src/icons/GoogleLogo';
+export { GraduationCapIcon } from 'phosphor-react-native/src/icons/GraduationCap';
+export { HandSwipeRightIcon } from 'phosphor-react-native/src/icons/HandSwipeRight';
+export { HouseIcon } from 'phosphor-react-native/src/icons/House';
+export { ImageSquareIcon } from 'phosphor-react-native/src/icons/ImageSquare';
+export { LightbulbIcon } from 'phosphor-react-native/src/icons/Lightbulb';
+export { ListIcon } from 'phosphor-react-native/src/icons/List';
+export { MagnetIcon } from 'phosphor-react-native/src/icons/Magnet';
+export { MicroscopeIcon } from 'phosphor-react-native/src/icons/Microscope';
+export { MoonIcon } from 'phosphor-react-native/src/icons/Moon';
+export { PlanetIcon } from 'phosphor-react-native/src/icons/Planet';
+export { PlayIcon } from 'phosphor-react-native/src/icons/Play';
+export { RobotIcon } from 'phosphor-react-native/src/icons/Robot';
+export { RocketIcon } from 'phosphor-react-native/src/icons/Rocket';
+export { ShareNetworkIcon } from 'phosphor-react-native/src/icons/ShareNetwork';
+export { ShieldCheckIcon } from 'phosphor-react-native/src/icons/ShieldCheck';
+export { SignOutIcon } from 'phosphor-react-native/src/icons/SignOut';
+export { SmileyIcon } from 'phosphor-react-native/src/icons/Smiley';
+export { SquaresFourIcon } from 'phosphor-react-native/src/icons/SquaresFour';
+export { StarIcon } from 'phosphor-react-native/src/icons/Star';
+export { SunIcon } from 'phosphor-react-native/src/icons/Sun';
+export { TargetIcon } from 'phosphor-react-native/src/icons/Target';
+export { UserCirclePlusIcon } from 'phosphor-react-native/src/icons/UserCirclePlus';
+export { UserCircleIcon } from 'phosphor-react-native/src/icons/UserCircle';
+export { UsersIcon } from 'phosphor-react-native/src/icons/Users';
+export { WhatsappLogoIcon } from 'phosphor-react-native/src/icons/WhatsappLogo';
+export { XIcon } from 'phosphor-react-native/src/icons/X';

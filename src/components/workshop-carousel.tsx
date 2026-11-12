@@ -1,9 +1,10 @@
 import { Image } from 'expo-image';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, PanResponder, Pressable, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
 
+import { ArrowRightIcon } from '@/components/icons';
 import type { Workshop } from '@/data/workshops';
+import { fonts } from '@/theme/fonts';
 
 type WorkshopSlide = {
   workshopId: string;
@@ -20,7 +21,6 @@ type CarouselColors = {
   muted: string;
   line: string;
   background: string;
-  blue: string;
 };
 
 type WorkshopCarouselProps = {
@@ -81,11 +81,10 @@ export function WorkshopCarousel({ colors, slides, onSelectWorkshop, onHorizonta
   const scale = motion.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.985, 1, 0.985] });
 
   return (
-    <View style={[styles.shell, compact && styles.shellCompact, { backgroundColor: colors.surface, borderColor: `${activeSlide.accent}70` }]}>
-      <View style={[styles.colorRail, { backgroundColor: activeSlide.accent }]} />
+    <View style={[styles.shell, compact && styles.shellCompact, { backgroundColor: colors.surface, borderColor: colors.line }]}>
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
-          {!minimal && <Text style={[styles.kicker, { color: activeSlide.accent }]}>{compact ? 'EXPERIENCIAS DESTACADAS' : 'GALERÍA DEL TALLER'}</Text>}
+          {!minimal && <Text style={[styles.kicker, { color: activeSlide.accent }]}>{compact ? '// experiencias destacadas' : '// galería del taller'}</Text>}
           <Text style={[styles.heading, { color: colors.text }]}>{compact ? 'Ciencia en acción' : minimal ? 'Galería del taller' : activeSlide.title}</Text>
         </View>
         <View style={[styles.counter, { backgroundColor: `${activeSlide.accent}18` }]}>
@@ -115,7 +114,7 @@ export function WorkshopCarousel({ colors, slides, onSelectWorkshop, onHorizonta
           style={({ pressed }) => [styles.openButton, { backgroundColor: activeSlide.accent }, pressed && styles.pressed]}
         >
           <Text style={styles.openButtonText}>{compact ? 'Explorar' : 'Ver taller'}</Text>
-          <MaterialCommunityIcons color="#FFFFFF" name="arrow-up-right" size={18} />
+          <ArrowRightIcon color="#FFFFFF" size={17} weight="bold" />
         </Pressable>}
       </Animated.View>
       <View style={styles.footerRow}>
@@ -129,29 +128,28 @@ export function WorkshopCarousel({ colors, slides, onSelectWorkshop, onHorizonta
 }
 
 const styles = StyleSheet.create({
-  shell: { borderWidth: 1, borderRadius: 26, padding: 16, marginBottom: 28, overflow: 'hidden', shadowColor: '#0F172A', shadowOpacity: 0.14, shadowRadius: 20, shadowOffset: { width: 0, height: 9 }, elevation: 5 },
+  shell: { borderWidth: 1, borderRadius: 20, padding: 14, marginBottom: 22, overflow: 'hidden' },
   shellCompact: { padding: 14 },
-  colorRail: { position: 'absolute', top: 0, left: 0, width: 5, height: '100%' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingLeft: 4, marginBottom: 14 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
   headerCopy: { flex: 1 },
-  kicker: { fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginBottom: 5 },
-  heading: { fontSize: 21, fontWeight: '900' },
-  counter: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 7 },
-  counterText: { fontSize: 11, fontWeight: '900' },
-  counterDivider: { fontSize: 11, fontWeight: '700' },
-  imageFrame: { height: 248, borderRadius: 20, overflow: 'hidden', backgroundColor: '#CBD5E1' },
+  kicker: { fontFamily: fonts.mono, fontSize: 11, marginBottom: 4 },
+  heading: { fontFamily: fonts.display, fontSize: 20, lineHeight: 24 },
+  counter: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 10, paddingHorizontal: 9, paddingVertical: 6 },
+  counterText: { fontFamily: fonts.mono, fontSize: 11 },
+  counterDivider: { fontFamily: fonts.mono, fontSize: 11 },
+  imageFrame: { height: 236, borderRadius: 14, overflow: 'hidden', backgroundColor: '#CBD5E1' },
   image: { width: '100%', height: '100%' },
-  imageShade: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(8, 15, 28, 0.24)' },
-  imageCaption: { position: 'absolute', left: 16, right: 118, bottom: 16 },
-  captionKicker: { color: '#FFFFFF', fontSize: 10, fontWeight: '900', letterSpacing: 1.1, marginBottom: 4 },
-  captionTitle: { color: '#FFFFFF', fontSize: 22, lineHeight: 26, fontWeight: '900' },
-  captionMeta: { color: 'rgba(255,255,255,0.82)', fontSize: 11, fontWeight: '700', marginTop: 4 },
-  openButton: { position: 'absolute', right: 14, bottom: 14, minHeight: 42, borderRadius: 13, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 5 },
-  openButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
-  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 14 },
+  imageShade: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(6, 12, 23, 0.3)' },
+  imageCaption: { position: 'absolute', left: 14, right: 118, bottom: 14 },
+  captionKicker: { color: '#FFFFFF', fontFamily: fonts.mono, fontSize: 10, marginBottom: 4 },
+  captionTitle: { color: '#FFFFFF', fontFamily: fonts.display, fontSize: 21, lineHeight: 25 },
+  captionMeta: { color: 'rgba(255,255,255,0.85)', fontFamily: fonts.body, fontSize: 11, marginTop: 4 },
+  openButton: { position: 'absolute', right: 12, bottom: 12, minHeight: 44, borderRadius: 12, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  openButtonText: { color: '#FFFFFF', fontFamily: fonts.bodySemi, fontSize: 13 },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 12 },
   dots: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   dot: { width: 7, height: 4, borderRadius: 3 },
   dotActive: { width: 22 },
-  swipeHint: { fontSize: 11, fontWeight: '700' },
+  swipeHint: { fontFamily: fonts.mono, fontSize: 10 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.96 }] },
 });

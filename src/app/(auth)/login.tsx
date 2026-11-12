@@ -1,22 +1,23 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { Animated, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useAnimatedValue, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedButton } from '@/components/animated-button';
-import { BrandLogo } from '@/components/brand-logo';
+import { logoSource } from '@/components/brand-logo';
+import { GridBackground } from '@/components/grid-background';
+import { GoogleLogoIcon, UserCircleIcon, UserCirclePlusIcon } from '@/components/icons';
 import { ScienceBackground } from '@/components/science-background';
-import { useAppTheme, useColors } from '@/context/theme-context';
+import { useColors } from '@/context/theme-context';
 import { authRedirectUrl, supabase } from '@/lib/supabase';
-import type { ThemeMode } from '@/theme/palette';
+import { pressedStyle, textStyles } from '@/theme/common-styles';
+import { fonts } from '@/theme/fonts';
 
 // Al iniciar sesión no navegamos a mano: el AuthProvider detecta la nueva sesión
 // y las rutas protegidas de _layout.tsx abren la app automáticamente.
 export default function LoginScreen() {
   const colors = useColors();
-  const { mode } = useAppTheme();
-  const authColors = getAuthColors(mode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -102,25 +103,28 @@ export default function LoginScreen() {
     setSubmitting(false);
   };
 
-  const inputStyle = [styles.input, { color: colors.text, borderColor: authColors.border, backgroundColor: authColors.input }];
+  const inputStyle = [styles.input, { color: colors.text, borderColor: colors.line, backgroundColor: colors.background }];
+  const HeaderIcon = isRegistering ? UserCirclePlusIcon : UserCircleIcon;
 
   return (
     <KeyboardAvoidingView style={[styles.flex, { backgroundColor: colors.background }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScienceBackground opacity={0.3} />
+      <GridBackground color={colors.grid} />
+      <ScienceBackground color={colors.accent} opacity={0.25} />
       <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Animated.View style={[styles.logo, { backgroundColor: colors.surface, borderColor: colors.line, transform: [{ scale: logoScale }] }]}>
-            <BrandLogo />
+          <Animated.View style={[styles.logoTile, { borderColor: colors.line, transform: [{ scale: logoScale }] }]}>
+            <Image accessibilityLabel="Logo de deDivulgadores" contentFit="contain" source={logoSource} style={styles.logo} />
           </Animated.View>
-          <Text style={[styles.kicker, { color: colors.blue }]}>ASOCIACIÓN CIVIL</Text>
+          <Text style={[textStyles.label, styles.kicker, { color: colors.accent }]}>{'// asociación civil'}</Text>
           <Text style={[styles.intro, { color: colors.muted }]}>Ciencia, creatividad y comunidad.</Text>
-          <View style={[styles.box, { backgroundColor: authColors.panel, borderColor: authColors.border }]}>
-            <View style={[styles.header, { backgroundColor: authColors.header }]}>
-              <View style={[styles.headerIcon, { backgroundColor: authColors.iconBackground }]}>
-                <MaterialCommunityIcons color={authColors.accent} name={isRegistering ? 'account-plus-outline' : 'account-lock-outline'} size={23} />
+
+          <View style={[styles.box, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+            <View style={styles.header}>
+              <View style={[styles.headerIcon, { backgroundColor: colors.soft }]}>
+                <HeaderIcon color={colors.accent} size={26} weight="duotone" />
               </View>
               <View style={styles.headerCopy}>
-                <Text style={[styles.headerKicker, { color: authColors.accent }]}>CUENTA</Text>
+                <Text style={[textStyles.label, { color: colors.accent }]}>CUENTA</Text>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{isRegistering ? 'Crear una cuenta' : 'Iniciar sesión'}</Text>
               </View>
             </View>
@@ -128,8 +132,9 @@ export default function LoginScreen() {
             <Text style={[styles.description, { color: colors.muted }]}>
               {isRegistering ? 'Crea una cuenta gratuita para continuar a tu espacio de aprendizaje.' : 'Ingresa tus datos para continuar a tu espacio de aprendizaje.'}
             </Text>
-            <Text style={[styles.label, { color: authColors.label }]}>Correo electrónico</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Correo electrónico</Text>
             <TextInput
+              accessibilityLabel="Correo electrónico"
               autoCapitalize="none"
               autoComplete="email"
               editable={!submitting}
@@ -140,8 +145,9 @@ export default function LoginScreen() {
               style={inputStyle}
               value={email}
             />
-            <Text style={[styles.label, { color: authColors.label }]}>Contraseña</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Contraseña</Text>
             <TextInput
+              accessibilityLabel="Contraseña"
               autoCapitalize="none"
               autoComplete="password"
               editable={!submitting}
@@ -153,18 +159,23 @@ export default function LoginScreen() {
               value={password}
             />
             {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
-            <AnimatedButton buttonColor={authColors.accent} disabled={submitting} label={submitting ? 'Procesando...' : isRegistering ? 'Crear cuenta' : 'Iniciar sesión'} onPress={submit} />
+            <AnimatedButton disabled={submitting} label={submitting ? 'Procesando...' : isRegistering ? 'Crear cuenta' : 'Iniciar sesión'} onPress={submit} variant="accent" />
             <View style={styles.divider}>
-              <View style={[styles.dividerLine, { backgroundColor: authColors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.muted }]}>O CONTINÚA CON</Text>
-              <View style={[styles.dividerLine, { backgroundColor: authColors.border }]} />
+              <View style={[styles.dividerLine, { backgroundColor: colors.line }]} />
+              <Text style={[textStyles.label, { color: colors.muted, fontSize: 10 }]}>O CONTINÚA CON</Text>
+              <View style={[styles.dividerLine, { backgroundColor: colors.line }]} />
             </View>
-            <Pressable accessibilityRole="button" disabled={submitting} onPress={signInWithGoogle} style={[styles.googleButton, { borderColor: authColors.border, backgroundColor: authColors.input }]}>
-              <MaterialCommunityIcons color={authColors.google} name="google" size={20} />
+            <Pressable
+              accessibilityRole="button"
+              disabled={submitting}
+              onPress={signInWithGoogle}
+              style={({ pressed }) => [styles.googleButton, { borderColor: colors.line, backgroundColor: colors.background }, pressed && pressedStyle]}
+            >
+              <GoogleLogoIcon color={colors.text} size={20} weight="bold" />
               <Text style={[styles.googleButtonText, { color: colors.text }]}>Continuar con Google</Text>
             </Pressable>
             <Pressable accessibilityRole="button" disabled={submitting} onPress={() => { setIsRegistering(!isRegistering); setError(''); }} style={styles.modeButton}>
-              <Text style={[styles.modeButtonText, { color: colors.blue }]}>{isRegistering ? 'Ya tengo una cuenta' : 'Crear una cuenta nueva'}</Text>
+              <Text style={[styles.modeButtonText, { color: colors.accent }]}>{isRegistering ? 'Ya tengo una cuenta' : 'Crear una cuenta nueva'}</Text>
             </Pressable>
             <Text style={[styles.helper, { color: colors.muted }]}>Tu sesión se guarda de forma segura en este dispositivo.</Text>
           </View>
@@ -174,44 +185,28 @@ export default function LoginScreen() {
   );
 }
 
-// Tonos cálidos propios del formulario de acceso.
-function getAuthColors(mode: ThemeMode) {
-  const dark = mode === 'dark';
-  return {
-    panel: dark ? '#222B3A' : '#FFFBF5',
-    header: dark ? '#303B4D' : '#FFF1D6',
-    input: dark ? '#1A2230' : '#FFFFFF',
-    border: dark ? '#52627A' : '#E8C58C',
-    label: dark ? '#D9E2F2' : '#795548',
-    accent: dark ? '#FFB86B' : '#B45309',
-    iconBackground: dark ? '#4B3A2B' : '#FFE1A8',
-    google: dark ? '#F7FAFC' : '#4285F4',
-  };
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  logo: { width: 156, height: 156, borderRadius: 34, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 20, shadowColor: '#A60E12', shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 4 },
-  kicker: { fontSize: 12, fontWeight: '800', letterSpacing: 1.8, marginTop: 2 },
-  intro: { marginTop: 7, marginBottom: 24, fontSize: 15, textAlign: 'center' },
-  box: { width: '100%', maxWidth: 410, borderRadius: 24, borderWidth: 1, padding: 25, shadowColor: '#17202A', shadowOpacity: 0.08, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 3 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 17, padding: 13, marginBottom: 22 },
-  headerIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 22 },
+  logoTile: { width: 148, height: 148, borderRadius: 34, borderWidth: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
+  logo: { width: 112, height: 114 },
+  kicker: { fontSize: 12 },
+  intro: { fontFamily: fonts.body, marginTop: 6, marginBottom: 22, fontSize: 15, textAlign: 'center' },
+  box: { width: '100%', maxWidth: 410, borderRadius: 22, borderWidth: 1, padding: 22 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+  headerIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   headerCopy: { flex: 1 },
-  headerKicker: { fontSize: 10, fontWeight: '900', letterSpacing: 1.4 },
-  headerTitle: { fontSize: 20, fontWeight: '900', marginTop: 2 },
-  welcome: { fontSize: 22, fontWeight: '800', marginBottom: 20 },
-  description: { fontSize: 13, lineHeight: 20, marginBottom: 22 },
-  label: { fontSize: 13, fontWeight: '700', marginBottom: 6 },
-  input: { height: 52, borderWidth: 1, borderRadius: 13, paddingHorizontal: 15, marginBottom: 17, fontSize: 15 },
-  error: { fontSize: 13, marginBottom: 14 },
+  headerTitle: { fontFamily: fonts.display, fontSize: 21, lineHeight: 25, marginTop: 2 },
+  welcome: { fontFamily: fonts.display, fontSize: 24, lineHeight: 28, marginBottom: 6 },
+  description: { fontFamily: fonts.body, fontSize: 13, lineHeight: 20, marginBottom: 20 },
+  label: { fontFamily: fonts.bodySemi, fontSize: 13, marginBottom: 6 },
+  input: { height: 52, borderWidth: 1, borderRadius: 13, paddingHorizontal: 15, marginBottom: 16, fontFamily: fonts.body, fontSize: 15 },
+  error: { fontFamily: fonts.bodyMedium, fontSize: 13, marginBottom: 14 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 20 },
   dividerLine: { flex: 1, height: 1 },
-  dividerText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
   googleButton: { minHeight: 52, borderRadius: 13, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  googleButtonText: { fontSize: 15, fontWeight: '800' },
-  modeButton: { alignItems: 'center', marginTop: 18 },
-  modeButtonText: { fontSize: 13, fontWeight: '800' },
-  helper: { fontSize: 11, lineHeight: 17, marginTop: 15, textAlign: 'center' },
+  googleButtonText: { fontFamily: fonts.bodySemi, fontSize: 15 },
+  modeButton: { alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: 10 },
+  modeButtonText: { fontFamily: fonts.bodySemi, fontSize: 14 },
+  helper: { fontFamily: fonts.body, fontSize: 11, lineHeight: 17, marginTop: 8, textAlign: 'center' },
 });

@@ -18,18 +18,20 @@ export default function AdminScreen() {
   if (!isStaff) return <Redirect href="/" />;
 
   return (
-    <AppScreen title="Administración" watermarkOpacity={0.075}>
-      <Text style={[textStyles.pageTitle, { color: colors.text }]}>Panel de administración</Text>
+    <AppScreen section="administración">
+      <Text style={[textStyles.label, { color: colors.accent }]}>{'// panel · datos de ejemplo'}</Text>
+      <Text style={[textStyles.pageTitle, styles.title, { color: colors.text }]}>Administración</Text>
       <View style={styles.statsRow}>
-        <StatCard label="Talleres" value="14" />
-        <StatCard label="Registros" value="86" />
+        <StatCard label="TALLERES" value="14" />
+        <StatCard label="REGISTROS" value="86" />
       </View>
-      <InfoCard title="Resumen del mes" text="3 talleres activos, 2 por iniciar." />
-      <AnimatedButton label="Registrar taller" onPress={() => {}} />
+      <InfoCard label="// este mes" title="Resumen del mes" text="3 talleres activos, 2 por iniciar." />
+      <AnimatedButton label="Registrar taller" onPress={() => {}} variant="accent" />
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  statsRow: { flexDirection: 'row', gap: 16, marginBottom: 24 },
+  title: { marginTop: 4, marginBottom: 20 },
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
 });

@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { Animated, StyleSheet, useAnimatedValue, useColorScheme, View } from 'react-native';
 
-import { palette, type Colors, type ThemeMode } from '@/theme/palette';
+import { lab, science, type Colors, type LabColors, type ThemeMode } from '@/theme/palette';
 
 type ThemeContextValue = {
   mode: ThemeMode;
@@ -21,7 +21,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     mode,
     changeMode: (nextMode) => {
       // Cubre la pantalla con el color actual, cambia el tema por debajo y desvanece el velo.
-      setCoverColor(palette[mode].background);
+      setCoverColor(science[mode].background);
       coverOpacity.setValue(1);
       requestAnimationFrame(() => {
         setMode(nextMode);
@@ -48,9 +48,14 @@ export function useAppTheme() {
   return context;
 }
 
-/** Colores del tema activo (claro u oscuro). */
+/** Colores científicos del tema activo (Inicio, Talleres, login…). */
 export function useColors(): Colors {
-  return palette[useAppTheme().mode];
+  return science[useAppTheme().mode];
+}
+
+/** Colores de "laboratorio de juegos" del tema activo (Niños y juegos). */
+export function useLabColors(): LabColors {
+  return lab[useAppTheme().mode];
 }
 
 const styles = StyleSheet.create({

@@ -3,10 +3,14 @@ import { useEffect } from 'react';
 import { Animated, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
 
 import { logoSource, logoStyles } from '@/components/brand-logo';
+import { GridBackground } from '@/components/grid-background';
 import { ScienceBackground } from '@/components/science-background';
+import { useColors } from '@/context/theme-context';
+import { fonts } from '@/theme/fonts';
 
 /** Pantalla de bienvenida animada que se muestra al abrir la app. */
 export function LoadingScreen() {
+  const colors = useColors();
   const logoScale = useAnimatedValue(0.82);
   const logoOpacity = useAnimatedValue(0);
   const fade = useAnimatedValue(1);
@@ -31,25 +35,27 @@ export function LoadingScreen() {
   const dotThreeY = dotsProgress.interpolate({ inputRange: [0, 1.4, 1.75, 2.1, 2.7, 3], outputRange: [0, 0, -8, 0, 0, 0] });
 
   return (
-    <Animated.View style={[styles.screen, { opacity: fade }]}>
-      <ScienceBackground />
-      <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }] }}>
+    <Animated.View style={[styles.screen, { backgroundColor: colors.background, opacity: fade }]}>
+      <GridBackground color={colors.grid} />
+      <ScienceBackground color={colors.accent} opacity={0.55} />
+      <Animated.View style={[styles.logoTile, { borderColor: colors.line, opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
         <Image contentFit="contain" source={logoSource} style={[styles.logo, logoStyles.outline]} />
       </Animated.View>
-      <Text style={styles.tagline}>Una asociación que convierte preguntas en experiencias</Text>
+      <Text style={[styles.tagline, { color: colors.muted }]}>{'// una asociación que convierte preguntas en experiencias'}</Text>
       <View style={styles.dots}>
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dotOneY }] }]} />
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dotTwoY }] }]} />
-        <Animated.View style={[styles.dot, { transform: [{ translateY: dotThreeY }] }]} />
+        <Animated.View style={[styles.dot, { backgroundColor: colors.accent, transform: [{ translateY: dotOneY }] }]} />
+        <Animated.View style={[styles.dot, { backgroundColor: colors.accent, transform: [{ translateY: dotTwoY }] }]} />
+        <Animated.View style={[styles.dot, { backgroundColor: colors.accent, transform: [{ translateY: dotThreeY }] }]} />
       </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { ...StyleSheet.absoluteFill, zIndex: 30, backgroundColor: '#FFF9F6', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  logo: { width: 220, height: 224 },
-  tagline: { color: '#7D4B4A', fontSize: 13, marginTop: 20, letterSpacing: 0.4 },
-  dots: { flexDirection: 'row', marginTop: 32, gap: 7 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#A60E12' },
+  screen: { ...StyleSheet.absoluteFill, zIndex: 30, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  logoTile: { width: 196, height: 196, borderRadius: 44, borderWidth: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 150, height: 153 },
+  tagline: { fontFamily: fonts.mono, fontSize: 12, marginTop: 24, paddingHorizontal: 32, textAlign: 'center' },
+  dots: { flexDirection: 'row', marginTop: 28, gap: 7 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
 });
