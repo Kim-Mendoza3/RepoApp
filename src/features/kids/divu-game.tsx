@@ -15,7 +15,7 @@ import {
 
 import { ArrowRightIcon, ConfettiIcon, HandSwipeRightIcon, HeartIcon, StarIcon, TimerIcon, TrashIcon, XCircleIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
-import { Cloud, TrashCan } from '@/features/kids/divu-scene-art';
+import { Cloud, SavannaBackground, TrashCan } from '@/features/kids/divu-scene-art';
 import { FoodArt, type FoodKind } from '@/features/kids/food-art';
 import { GameButton, GameFinish, GameTopBar, MissionCard, stamp } from '@/features/kids/game-chrome';
 import { useBackgroundMusic, useSfx } from '@/features/kids/sound';
@@ -38,14 +38,15 @@ const foods: Food[] = [
 
 const ROUNDS = 8;
 const ROUND_MS = 9000;
-const SCENE_HEIGHT = 290;
-const FOOD_SIZE = 86;
-const FOOD_TOP = 18;
-const DIVU = { width: 156, height: 110, right: 4, bottom: 34 };
-const TRASH = { size: 74, left: 12, bottom: 18 };
+// Escenario vertical (3:4) para aprovechar la pantalla del teléfono; con tope para tabletas.
+const SCENE_RATIO = 4 / 3;
+const MAX_SCENE_HEIGHT = 560;
+const FOOD_SIZE = 96;
+const FOOD_TOP = 28;
+const DIVU = { width: 184, height: 130, right: 0, bottom: 40 };
+const TRASH = { size: 86, left: 14, bottom: 22 };
 
 const divuSource = require('@/assets/images/serpiente-normal.png');
-const habitatSource = require('@/assets/images/habitat-serpiente.jpg');
 const sounds = {
   music: require('@/assets/sounds/music-divu.wav'),
   pop: require('@/assets/sounds/pop.wav'),
@@ -85,6 +86,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const [phase, setPhase] = useState<'drop' | 'play' | 'result'>('drop');
   const [result, setResult] = useState<Result | null>(null);
   const [sceneWidth, setSceneWidth] = useState(0);
+  const sceneHeight = sceneWidth ? Math.min(sceneWidth * SCENE_RATIO, MAX_SCENE_HEIGHT) : 440;
   const finished = round >= ROUNDS;
   const food = deck[Math.min(round, ROUNDS - 1)];
 
@@ -112,6 +114,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const sparkle = useAnimatedValue(0); // chispas de festejo
   const cloudA = useAnimatedValue(0);
   const cloudB = useAnimatedValue(0);
+  const resultIn = useAnimatedValue(0); // la tarjeta de resultado entra con un rebote
   const roundToken = useRef(0); // invalida temporizadores de rondas anteriores
 
   // Animaciones de ambiente: Divu se balancea, la comida se mece y las nubes cruzan el cielo.
@@ -158,6 +161,13 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [round, deck]);
 
+  // La tarjeta de resultado aparece con un pequeño rebote.
+  useEffect(() => {
+    if (phase !== 'result') return;
+    resultIn.setValue(0);
+    Animated.spring(resultIn, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 9 }).start();
+  }, [phase, resultIn]);
+
   // Música final al terminar la partida.
   useEffect(() => {
     if (finished) playWin();
@@ -166,8 +176,8 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
 
   // Centros (en el escenario) de la comida, Divu y el bote, para saber dónde se soltó.
   const foodCenter = { x: sceneWidth / 2, y: FOOD_TOP + FOOD_SIZE / 2 };
-  const divuCenter = { x: sceneWidth - DIVU.right - DIVU.width * 0.55, y: SCENE_HEIGHT - DIVU.bottom - DIVU.height * 0.5 };
-  const trashCenter = { x: TRASH.left + TRASH.size / 2, y: SCENE_HEIGHT - TRASH.bottom - TRASH.size * 0.55 };
+  const divuCenter = { x: sceneWidth - DIVU.right - DIVU.width * 0.55, y: sceneHeight - DIVU.bottom - DIVU.height * 0.5 };
+  const trashCenter = { x: TRASH.left + TRASH.size / 2, y: sceneHeight - TRASH.bottom - TRASH.size * 0.55 };
 
   const resolve = (target: Target) => {
     if (phase !== 'play' || !food) return;
@@ -282,6 +292,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const sparkleScale = sparkle.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.2, 1.1, 0.6] });
   const sparkleOpacity = sparkle.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 1, 1, 0] });
   const plusY = sparkle.interpolate({ inputRange: [0, 1], outputRange: [0, -46] });
+  const resultScale = resultIn.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
 
   const outcome = result?.outcome;
   const feedback = outcome === 'correct'
@@ -296,13 +307,24 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
       <MissionCard
         label="// misión 01 · alimentar"
         title="¿Qué puede comer Divu?"
-        text="Lleva la comida hasta Divu si es algo que come una serpiente. Si no, ¡al bote!"
+        text="Divu es una pitón bola y vive en la sabana africana. Llévale lo que come una serpiente; lo demás, ¡al bote!"
         art={<Image contentFit="contain" source={divuSource} style={styles.missionSnake} />}
       />
 
+      {/* Ronda y tiempo (arriba del escenario para verlos mientras se juega) */}
+      <View style={styles.roundRow}>
+        <View style={styles.roundCopy}>
+          <Text style={[styles.roundLabel, { color: lab.label }]}>{`// comida ${round + 1} de ${ROUNDS}`}</Text>
+          <Text style={[styles.foodName, { color: lab.text }]}>{food?.name}</Text>
+        </View>
+        <View style={[styles.timerTrack, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
+          <Animated.View style={[styles.timerFill, { backgroundColor: lab.cyan, transform: [{ scaleX: timer }] }]} />
+        </View>
+      </View>
+
       {/* ESCENARIO */}
-      <View onLayout={(event: LayoutChangeEvent) => setSceneWidth(event.nativeEvent.layout.width)} style={[styles.scene, { borderColor: lab.line }]}>
-        <Image contentFit="cover" pointerEvents="none" source={habitatSource} style={StyleSheet.absoluteFill} />
+      <View onLayout={(event: LayoutChangeEvent) => setSceneWidth(event.nativeEvent.layout.width)} style={[styles.scene, { height: sceneHeight, borderColor: lab.line }]}>
+        <SavannaBackground />
         <Animated.View pointerEvents="none" style={[styles.cloud, { top: 10, transform: [{ translateX: cloudAX }] }]}><Cloud width={96} /></Animated.View>
         <Animated.View pointerEvents="none" style={[styles.cloud, { top: 46, opacity: 0.8, transform: [{ translateX: cloudBX }, { scale: 0.7 }] }]}><Cloud width={96} /></Animated.View>
 
@@ -367,31 +389,23 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
             <FoodArt kind={food.kind} size={FOOD_SIZE} />
           </Animated.View>
         ) : null}
-      </View>
 
-      {/* Ronda y tiempo */}
-      <View style={styles.roundRow}>
-        <View style={styles.roundCopy}>
-          <Text style={[styles.roundLabel, { color: lab.label }]}>{`// comida ${round + 1} de ${ROUNDS}`}</Text>
-          <Text style={[styles.foodName, { color: lab.text }]}>{food?.name}</Text>
-        </View>
-        <View style={[styles.timerTrack, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
-          <Animated.View style={[styles.timerFill, { backgroundColor: lab.cyan, transform: [{ scaleX: timer }] }]} />
-        </View>
-      </View>
-
-      {phase === 'result' && result && food ? (
-        <>
-          <View style={[styles.feedback, stamp(lab, 5, feedback.color)]}>
-            <feedback.Icon color={lab.onBright} size={30} weight="duotone" />
-            <View style={styles.feedbackCopy}>
-              <Text style={[styles.feedbackTitle, { color: lab.onBright }]}>{feedback.title}</Text>
-              <Text style={[styles.feedbackText, { color: lab.onBright }]}>{`${food.name}: ${food.fact}`}</Text>
+        {/* Resultado DENTRO del escenario (sobre el cielo), para que no quede fuera de la pantalla. */}
+        {phase === 'result' && result && food ? (
+          <Animated.View style={[styles.resultOverlay, { opacity: resultIn, transform: [{ scale: resultScale }] }]}>
+            <View style={[styles.feedback, stamp(lab, 5, feedback.color)]}>
+              <feedback.Icon color={lab.onBright} size={30} weight="duotone" />
+              <View style={styles.feedbackCopy}>
+                <Text style={[styles.feedbackTitle, { color: lab.onBright }]}>{feedback.title}</Text>
+                <Text style={[styles.feedbackText, { color: lab.onBright }]}>{`${food.name}: ${food.fact}`}</Text>
+              </View>
             </View>
-          </View>
-          <GameButton icon={<ArrowRightIcon color={lab.onBright} size={18} weight="bold" />} label={round + 1 < ROUNDS ? 'Siguiente comida' : 'Ver resultado'} onPress={next} />
-        </>
-      ) : (
+            <GameButton icon={<ArrowRightIcon color={lab.onBright} size={18} weight="bold" />} label={round + 1 < ROUNDS ? 'Siguiente comida' : 'Ver resultado'} onPress={next} />
+          </Animated.View>
+        ) : null}
+      </View>
+
+      {phase === 'result' ? null : (
         <>
           {/* Alternativa con botones (accesibilidad y quien prefiera tocar en vez de arrastrar). */}
           <View style={styles.actions}>
@@ -426,7 +440,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
 
 const styles = StyleSheet.create({
   missionSnake: { width: 82, height: 72, transform: [{ rotate: '-12deg' }] },
-  scene: { height: SCENE_HEIGHT, borderRadius: 22, borderWidth: 2, overflow: 'hidden', position: 'relative' },
+  scene: { borderRadius: 22, borderWidth: 2, overflow: 'hidden', position: 'relative' },
   cloud: { position: 'absolute', left: 0 },
   trash: { position: 'absolute' },
   divu: { position: 'absolute', alignItems: 'center' },
@@ -435,13 +449,14 @@ const styles = StyleSheet.create({
   sparkle: { position: 'absolute' },
   plusOne: { position: 'absolute', color: '#FFFFFF', fontFamily: fonts.display, fontSize: 26, textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 4, textShadowOffset: { width: 0, height: 2 } },
   food: { position: 'absolute', top: FOOD_TOP, width: FOOD_SIZE, height: FOOD_SIZE, zIndex: 10 },
-  roundRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 14, marginBottom: 12 },
+  roundRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 },
+  resultOverlay: { position: 'absolute', top: 14, left: 12, right: 12, zIndex: 20 },
   roundCopy: { flexShrink: 1 },
   roundLabel: { fontFamily: fonts.monoBold, fontSize: 11 },
   foodName: { fontFamily: fonts.display, fontSize: 22, lineHeight: 26, marginTop: 2 },
   timerTrack: { flex: 1, height: 14, borderRadius: 7, borderWidth: 2, overflow: 'hidden' },
   timerFill: { flex: 1, transformOrigin: 'left' },
-  actions: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  actions: { flexDirection: 'row', gap: 12, marginTop: 14, marginBottom: 12 },
   action: { flex: 1, minHeight: 52, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   actionText: { fontFamily: fonts.bodyBold, fontSize: 15 },
   disabled: { opacity: 0.5 },
