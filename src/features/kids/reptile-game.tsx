@@ -28,7 +28,7 @@ type ReptileGameProps = {
   onDraggingChange?: (dragging: boolean) => void;
 };
 
-/** Juego "Dibu y su merienda": arrastra cada comida hasta la serpiente si es algo que puede comer. */
+/** Juego "Divu y su merienda": arrastra cada comida hasta la serpiente si es algo que puede comer. */
 export function ReptileGame({ onExit, onDraggingChange }: ReptileGameProps) {
   const lab = useLabColors();
   // Estilo "estampa" de laboratorio: borde grueso y sombra sólida.
@@ -42,7 +42,7 @@ export function ReptileGame({ onExit, onDraggingChange }: ReptileGameProps) {
   const foodPosition = useAnimatedValueXY({ x: 0, y: 0 });
   const currentFood = foods[foodIndex];
 
-  // Dibu se balancea y cada ronda aparece una comida nueva.
+  // Divu se balancea y cada ronda aparece una comida nueva.
   useEffect(() => {
     const snakeAnimation = Animated.loop(Animated.sequence([
       Animated.timing(snakeMotion, { toValue: 1, duration: 1100, useNativeDriver: true }),
@@ -130,11 +130,11 @@ export function ReptileGame({ onExit, onDraggingChange }: ReptileGameProps) {
         <Text style={styles.grass}>🌿 🌱 🌿 🌱 🌿</Text>
         <Animated.View style={[styles.snakeCharacter, { transform: [{ translateY: snakeMotion.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) }] }]}>
           <Image contentFit="contain" source={snakeSource} style={styles.snakeImage} />
-          <Text style={styles.snakeName}>Dibu</Text>
+          <Text style={styles.snakeName}>Divu</Text>
         </Animated.View>
         <Animated.View
           {...foodPanResponder.panHandlers}
-          accessibilityLabel={`Comida: ${currentFood.name}. Arrástrala hasta Dibu.`}
+          accessibilityLabel={`Comida: ${currentFood.name}. Arrástrala hasta Divu.`}
           style={[styles.food, {
             backgroundColor: currentFood.color,
             opacity: foodDrop.interpolate({ inputRange: [0, 0.18, 1], outputRange: [0, 1, 1] }),
@@ -156,7 +156,7 @@ export function ReptileGame({ onExit, onDraggingChange }: ReptileGameProps) {
       </View>
       <View style={[styles.dragHint, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
         <HandSwipeRightIcon color={lab.text} size={24} weight="duotone" />
-        <Text style={[styles.dragHintText, { color: lab.text }]}>Arrastra la comida por el hábitat y acércala a Dibu para alimentarlo.</Text>
+        <Text style={[styles.dragHintText, { color: lab.text }]}>Arrastra la comida por el hábitat y acércala a Divu para alimentarlo.</Text>
       </View>
       {feedback && (
         <View style={[styles.feedbackCard, { backgroundColor: correct ? '#DCFCE7' : '#FFE4E6', borderColor: correct ? '#16A34A' : '#E11D48' }]}>

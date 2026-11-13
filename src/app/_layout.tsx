@@ -52,20 +52,20 @@ function RootNavigator() {
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       {/*
         Rutas protegidas: si `guard` es false, esas pantallas no existen para el usuario
-        y Expo Router lo manda a `redirectTo`. Así, sin sesión solo se ve el login,
-        y al iniciar sesión el login desaparece y se abre la app.
+        y Expo Router lo manda a `redirectTo`. Aquí solo el login está protegido: con
+        sesión iniciada deja de existir y la app regresa a Inicio.
       */}
       <Stack screenOptions={{ headerShown: false }}>
+        {/* MODO INVITADO: el contenido público se puede usar sin cuenta (lo exigen las tiendas). */}
+        <Stack.Screen name="(app)" />
+        <Stack.Screen name="workshop/[id]" />
+        {/* Sin gesto de "deslizar para regresar" (iOS): chocaba con arrastrar. Se sale con "Salir". */}
+        <Stack.Screen name="juegos/divu" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
+        <Stack.Screen name="juegos/insectos" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
+        <Stack.Screen name="juegos/estrellas" />
+        {/* El login solo existe sin sesión; al iniciar sesión desaparece y se vuelve a Inicio. */}
         <Stack.Protected guard={!isLoggedIn} redirectTo="/">
-          <Stack.Screen name="(auth)" />
-        </Stack.Protected>
-        <Stack.Protected guard={isLoggedIn} redirectTo="/login">
-          <Stack.Screen name="(app)" />
-          <Stack.Screen name="workshop/[id]" />
-          {/* Sin gesto de "deslizar para regresar" (iOS): chocaba con arrastrar la comida. Se sale con "Salir". */}
-          <Stack.Screen name="juegos/dibu" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
-          <Stack.Screen name="juegos/insectos" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
-          <Stack.Screen name="juegos/estrellas" />
+          <Stack.Screen name="(auth)" options={{ animation: 'slide_from_bottom' }} />
         </Stack.Protected>
         <Stack.Screen name="auth/callback" />
       </Stack>

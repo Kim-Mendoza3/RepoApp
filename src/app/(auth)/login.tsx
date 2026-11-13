@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import {
@@ -20,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedButton } from '@/components/animated-button';
 import { logoSource } from '@/components/brand-logo';
 import { GridBackground } from '@/components/grid-background';
-import { GoogleLogoIcon, UserCircleIcon, UserCirclePlusIcon } from '@/components/icons';
+import { ArrowLeftIcon, GoogleLogoIcon, UserCircleIcon, UserCirclePlusIcon } from '@/components/icons';
 import { ScienceBackground } from '@/components/science-background';
 import { useColors } from '@/context/theme-context';
 import { authRedirectUrl, supabase } from '@/lib/supabase';
@@ -33,7 +34,10 @@ type Mode = 'login' | 'register';
 // y las rutas protegidas de _layout.tsx abren la app automáticamente.
 export default function LoginScreen() {
   const colors = useColors();
-  const [mode, setMode] = useState<Mode>('login');
+  // El menú puede abrir el login directo en "Crear cuenta" con ?mode=register.
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const initialMode: Mode = params.mode === 'register' ? 'register' : 'login';
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,7 +46,7 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [switchWidth, setSwitchWidth] = useState(0);
   const logoScale = useAnimatedValue(1);
-  const indicator = useAnimatedValue(0); // 0 = Iniciar sesión, 1 = Crear cuenta
+  const indicator = useAnimatedValue(initialMode === 'register' ? 1 : 0); // 0 = Iniciar sesión, 1 = Crear cuenta
   const slide = useAnimatedValue(0); // barrido del contenido: 1 entra por la derecha, -1 por la izquierda
 
   const isRegistering = mode === 'register';
@@ -59,6 +63,11 @@ export default function LoginScreen() {
     animation.start();
     return () => animation.stop();
   }, [logoScale]);
+
+  const exploreAsGuest = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
 
   const switchMode = (next: Mode) => {
     if (next === mode || submitting) return;
@@ -164,6 +173,15 @@ export default function LoginScreen() {
       <ScienceBackground color={accent} opacity={0.25} />
       <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          {/* Modo invitado: la cuenta es opcional, se puede volver a la app sin iniciar sesión. */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={exploreAsGuest}
+            style={({ pressed }) => [styles.guestButton, { backgroundColor: colors.surface, borderColor: colors.line }, pressed && pressedStyle]}
+          >
+            <ArrowLeftIcon color={colors.text} size={18} weight="bold" />
+            <Text style={[styles.guestText, { color: colors.text }]}>Explorar sin cuenta</Text>
+          </Pressable>
           <Animated.View style={[styles.logoTile, { borderColor: colors.line, transform: [{ scale: logoScale }] }]}>
             <Image accessibilityLabel="Logo de deDivulgadores" contentFit="contain" source={logoSource} style={styles.logo} />
           </Animated.View>
@@ -299,6 +317,8 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 22 },
+  guestButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, borderWidth: 1, borderRadius: 13, paddingHorizontal: 14, marginBottom: 14 },
+  guestText: { fontFamily: fonts.bodySemi, fontSize: 14 },
   logoTile: { width: 140, height: 140, borderRadius: 32, borderWidth: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   logo: { width: 106, height: 108 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },

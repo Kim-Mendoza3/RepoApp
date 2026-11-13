@@ -1,12 +1,12 @@
 import { Image } from 'expo-image';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { logoSource, logoStyles } from '@/components/brand-logo';
 import { GridBackground } from '@/components/grid-background';
-import { ListIcon, MoonIcon, SignOutIcon, SunIcon, XIcon } from '@/components/icons';
+import { ListIcon, MoonIcon, SignOutIcon, SunIcon, UserCircleIcon, UserCirclePlusIcon, XIcon } from '@/components/icons';
 import { consumeTabTransition } from '@/components/tab-transition';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme, useColors, useLabColors } from '@/context/theme-context';
@@ -66,9 +66,14 @@ function AppHeader({ section, isLab }: { section: string; isLab: boolean }) {
   const colors = useColors();
   const labColors = useLabColors();
   const { mode, changeMode } = useAppTheme();
-  const { signOut } = useAuth();
+  const { session, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const dark = mode === 'dark';
+
+  const openAuth = (authMode: 'login' | 'register') => {
+    setMenuOpen(false);
+    router.push({ pathname: '/login', params: { mode: authMode } });
+  };
 
   const text = isLab ? labColors.text : colors.text;
   const label = isLab ? labColors.label : colors.accent;
@@ -111,10 +116,28 @@ function AppHeader({ section, isLab }: { section: string; isLab: boolean }) {
       </View>
       {menuOpen && (
         <View style={[styles.menu, shadowStyles.soft, { backgroundColor: surface, borderColor: isLab ? labColors.line : colors.line }]}>
-          <Pressable accessibilityRole="button" onPress={signOut} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
-            <SignOutIcon color={colors.danger} size={20} weight="duotone" />
-            <Text style={[styles.menuText, { color: colors.danger }]}>Cerrar sesión</Text>
-          </Pressable>
+          {session ? (
+            <>
+              <Text numberOfLines={1} style={[textStyles.label, styles.menuLabel, { color: colors.muted }]}>{`// sesión: ${session.user.email ?? 'cuenta activa'}`}</Text>
+              <Pressable accessibilityRole="button" onPress={signOut} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
+                <SignOutIcon color={colors.danger} size={20} weight="duotone" />
+                <Text style={[styles.menuText, { color: colors.danger }]}>Cerrar sesión</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              {/* Modo invitado: la cuenta es opcional. */}
+              <Text style={[textStyles.label, styles.menuLabel, { color: colors.muted }]}>{'// explorando como invitado'}</Text>
+              <Pressable accessibilityRole="button" onPress={() => openAuth('login')} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
+                <UserCircleIcon color={colors.accent} size={20} weight="duotone" />
+                <Text style={[styles.menuText, { color: text }]}>Iniciar sesión</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => openAuth('register')} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
+                <UserCirclePlusIcon color={colors.accent2} size={20} weight="duotone" />
+                <Text style={[styles.menuText, { color: text }]}>Crear cuenta</Text>
+              </Pressable>
+            </>
+          )}
         </View>
       )}
     </>
@@ -157,6 +180,7 @@ const styles = StyleSheet.create({
   iconButton: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   menu: { borderRadius: 18, borderWidth: 1, padding: 16, marginTop: -8, marginBottom: 22 },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
+  menuLabel: { marginBottom: 4 },
   menuText: { fontFamily: fonts.bodySemi, fontSize: 15 },
   watermark: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   watermarkImage: { width: 310, height: 310 },

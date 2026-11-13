@@ -9,7 +9,7 @@ import { ReptileGame } from '@/features/kids/reptile-game';
 
 // Pantalla completa del juego. Al ser una ruta propia, el botón "atrás" de Android
 // regresa a la pestaña Niños en lugar de cerrar la app.
-export default function DibuGameScreen() {
+export default function DivuGameScreen() {
   const lab = useLabColors();
   // En iOS el scroll y el arrastre de la comida escuchan el mismo dedo a la vez;
   // mientras se arrastra la comida, congelamos el scroll para que la pantalla no se mueva.

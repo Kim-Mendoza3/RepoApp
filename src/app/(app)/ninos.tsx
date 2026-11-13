@@ -11,7 +11,7 @@ import { stamp } from '@/features/kids/game-chrome';
 import { pressedStyle, textStyles } from '@/theme/common-styles';
 import { fonts } from '@/theme/fonts';
 
-const dibuSource = require('@/assets/images/serpiente-normal.png');
+const divuSource = require('@/assets/images/serpiente-normal.png');
 
 type IconComponent = ComponentType<{ color?: string; size?: number; weight?: 'duotone' | 'bold' }>;
 
@@ -36,22 +36,22 @@ export default function KidsScreen() {
           </View>
         </View>
 
-        {/* Caja de observación: cuadrícula fina, marcas en las esquinas y Dibu flotando. */}
+        {/* Caja de observación: cuadrícula fina, marcas en las esquinas y Divu flotando. */}
         <View style={[styles.specimen, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
           <GridBackground color={lab.grid} size={16} />
           <View style={[styles.corner, styles.cornerTL, { borderColor: lab.text }]} />
           <View style={[styles.corner, styles.cornerTR, { borderColor: lab.text }]} />
           <View style={[styles.corner, styles.cornerBL, { borderColor: lab.text }]} />
           <View style={[styles.corner, styles.cornerBR, { borderColor: lab.text }]} />
-          <FloatingDibu />
-          <Text style={[styles.specimenLabel, { color: lab.text }]}>espécimen: Dibu</Text>
+          <FloatingDivu />
+          <Text style={[styles.specimenLabel, { color: lab.text }]}>espécimen: Divu</Text>
         </View>
 
-        <Text style={[styles.gameTitle, { color: lab.text }]}>Dibu y su merienda</Text>
-        <Text style={[textStyles.body, { color: lab.muted, fontSize: 14, lineHeight: 21 }]}>Ayuda a Dibu a identificar qué alimentos puede comer una serpiente.</Text>
+        <Text style={[styles.gameTitle, { color: lab.text }]}>Divu y su merienda</Text>
+        <Text style={[textStyles.body, { color: lab.muted, fontSize: 14, lineHeight: 21 }]}>Ayuda a Divu a identificar qué alimentos puede comer una serpiente.</Text>
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push('/juegos/dibu')}
+          onPress={() => router.push('/juegos/divu')}
           style={({ pressed }) => [styles.playButton, { backgroundColor: lab.cyan, borderColor: lab.brightLine, shadowColor: lab.brightShadow }, pressed && pressedStyle]}
         >
           <PlayIcon color={lab.onBright} size={18} weight="bold" />
@@ -91,7 +91,7 @@ function GameTile({ Icon, code, title, background, onPress }: { Icon: IconCompon
   );
 }
 
-function FloatingDibu() {
+function FloatingDivu() {
   const bob = useAnimatedValue(0);
   useEffect(() => {
     const animation = Animated.loop(Animated.sequence([
@@ -105,7 +105,7 @@ function FloatingDibu() {
   const rotate = bob.interpolate({ inputRange: [0, 1], outputRange: ['-6deg', '-3deg'] });
   return (
     <Animated.View style={{ transform: [{ translateY }, { rotate }] }}>
-      <Image accessibilityLabel="Dibu, la serpiente" contentFit="contain" source={dibuSource} style={styles.dibu} />
+      <Image accessibilityLabel="Divu, la serpiente" contentFit="contain" source={divuSource} style={styles.divu} />
     </Animated.View>
   );
 }
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   cornerTR: { right: 10, top: 10, borderRightWidth: 2, borderTopWidth: 2 },
   cornerBL: { left: 10, bottom: 10, borderLeftWidth: 2, borderBottomWidth: 2 },
   cornerBR: { right: 10, bottom: 10, borderRightWidth: 2, borderBottomWidth: 2 },
-  dibu: { width: 184, height: 128 },
+  divu: { width: 184, height: 128 },
   specimenLabel: { position: 'absolute', right: 32, bottom: 12, fontFamily: fonts.monoBold, fontSize: 10 },
   gameTitle: { fontFamily: fonts.display, fontSize: 24, lineHeight: 28, marginTop: 14, marginBottom: 4 },
   playButton: { marginTop: 14, minHeight: 52, borderRadius: 16, borderWidth: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 4 }, elevation: 0 },
