@@ -1,12 +1,12 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { logoSource, logoStyles } from '@/components/brand-logo';
 import { GridBackground } from '@/components/grid-background';
-import { ListIcon, MoonIcon, SignOutIcon, SunIcon, UserCircleIcon, UserCirclePlusIcon, XIcon } from '@/components/icons';
+import { ListIcon, MoonIcon, SignOutIcon, SunIcon, TrashIcon, UserCircleIcon, UserCirclePlusIcon, XIcon } from '@/components/icons';
 import { consumeTabTransition } from '@/components/tab-transition';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme, useColors, useLabColors } from '@/context/theme-context';
@@ -66,9 +66,30 @@ function AppHeader({ section, isLab }: { section: string; isLab: boolean }) {
   const colors = useColors();
   const labColors = useLabColors();
   const { mode, changeMode } = useAppTheme();
-  const { session, signOut } = useAuth();
+  const { session, signOut, deleteAccount } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const dark = mode === 'dark';
+
+  // Doble confirmación porque no se puede deshacer (requisito de App Store y Google Play).
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      '¿Eliminar tu cuenta?',
+      'Se borrarán para siempre tu cuenta, tu perfil y los perfiles de niñas y niños que registraste. Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar cuenta',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await deleteAccount();
+            setMenuOpen(false);
+            if (result.ok) Alert.alert('Cuenta eliminada', 'Tu cuenta y tus datos se eliminaron. Puedes seguir usando la app como invitado.');
+            else Alert.alert('No se pudo eliminar', result.message);
+          },
+        },
+      ],
+    );
+  };
 
   const openAuth = (authMode: 'login' | 'register') => {
     setMenuOpen(false);
@@ -120,8 +141,13 @@ function AppHeader({ section, isLab }: { section: string; isLab: boolean }) {
             <>
               <Text numberOfLines={1} style={[textStyles.label, styles.menuLabel, { color: colors.muted }]}>{`// sesión: ${session.user.email ?? 'cuenta activa'}`}</Text>
               <Pressable accessibilityRole="button" onPress={signOut} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
-                <SignOutIcon color={colors.danger} size={20} weight="duotone" />
-                <Text style={[styles.menuText, { color: colors.danger }]}>Cerrar sesión</Text>
+                <SignOutIcon color={text} size={20} weight="duotone" />
+                <Text style={[styles.menuText, { color: text }]}>Cerrar sesión</Text>
+              </Pressable>
+              <View style={[styles.menuDivider, { backgroundColor: isLab ? labColors.line : colors.line }]} />
+              <Pressable accessibilityRole="button" onPress={confirmDeleteAccount} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
+                <TrashIcon color={colors.danger} size={20} weight="duotone" />
+                <Text style={[styles.menuText, { color: colors.danger }]}>Eliminar mi cuenta</Text>
               </Pressable>
             </>
           ) : (
@@ -181,6 +207,7 @@ const styles = StyleSheet.create({
   menu: { borderRadius: 18, borderWidth: 1, padding: 16, marginTop: -8, marginBottom: 22 },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44 },
   menuLabel: { marginBottom: 4 },
+  menuDivider: { height: 1, marginVertical: 6 },
   menuText: { fontFamily: fonts.bodySemi, fontSize: 15 },
   watermark: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   watermarkImage: { width: 310, height: 310 },

@@ -14,6 +14,8 @@ type AuthContextValue = {
   /** admin o agenda_manager: pueden ver el panel de administración. */
   isStaff: boolean;
   signOut: () => Promise<void>;
+  /** Elimina para siempre la cuenta actual y sus datos personales (ver migración delete_account). */
+  deleteAccount: () => Promise<{ ok: true } | { ok: false; message: string }>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -80,6 +82,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!supabase) return;
       const { error } = await supabase.auth.signOut();
       if (error) Alert.alert('No se pudo cerrar la sesión', error.message);
+    },
+    deleteAccount: async () => {
+      if (!supabase) return { ok: false, message: 'La conexión con el servidor no está configurada.' };
+      const { error } = await supabase.rpc('delete_my_account' as never);
+      if (error) {
+        const message = error.message.includes('STAFF_CONTENT')
+          ? 'Tu cuenta creó talleres, sesiones o eventos de la asociación. Pide a otra persona del staff que los reasigne y vuelve a intentarlo.'
+          : `No se pudo eliminar la cuenta. ${error.message}`;
+        return { ok: false, message };
+      }
+      // El usuario ya no existe en el servidor: solo limpiamos la sesión guardada en el dispositivo.
+      await supabase.auth.signOut({ scope: 'local' });
+      return { ok: true };
     },
   }), [session, role, loading]);
 

@@ -37,6 +37,7 @@ export { SquaresFourIcon } from 'phosphor-react-native/src/icons/SquaresFour';
 export { StarIcon } from 'phosphor-react-native/src/icons/Star';
 export { SunIcon } from 'phosphor-react-native/src/icons/Sun';
 export { TargetIcon } from 'phosphor-react-native/src/icons/Target';
+export { TrashIcon } from 'phosphor-react-native/src/icons/Trash';
 export { TrophyIcon } from 'phosphor-react-native/src/icons/Trophy';
 export { UserCirclePlusIcon } from 'phosphor-react-native/src/icons/UserCirclePlus';
 export { UserCircleIcon } from 'phosphor-react-native/src/icons/UserCircle';
