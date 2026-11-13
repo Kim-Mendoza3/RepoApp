@@ -6,13 +6,13 @@
 export const science = {
   light: {
     background: '#F1F5F9', surface: '#FFFFFF', soft: '#E6EEF5', text: '#0B1B2B', muted: '#4A5D70', line: '#D5E0EA',
-    accent: '#0E7490', accent2: '#4338CA', onAccent: '#FFFFFF', grid: 'rgba(14, 116, 144, 0.08)',
+    accent: '#0E7490', accent2: '#4338CA', onAccent: '#FFFFFF', onAccent2: '#FFFFFF', grid: 'rgba(14, 116, 144, 0.08)',
     navBackground: 'rgba(255, 255, 255, 0.96)', navActive: '#0B1B2B', onNavActive: '#E6F6FB',
     danger: '#B42318', success: '#087F68',
   },
   dark: {
     background: '#060C17', surface: '#0E1828', soft: '#13223A', text: '#E4EEF7', muted: '#8BA0B6', line: '#1E3048',
-    accent: '#22D3EE', accent2: '#A5B4FC', onAccent: '#04202A', grid: 'rgba(34, 211, 238, 0.07)',
+    accent: '#22D3EE', accent2: '#A5B4FC', onAccent: '#04202A', onAccent2: '#0B1438', grid: 'rgba(34, 211, 238, 0.07)',
     navBackground: 'rgba(14, 24, 40, 0.96)', navActive: '#22D3EE', onNavActive: '#04202A',
     danger: '#FF9B93', success: '#5DE0BF',
   },
