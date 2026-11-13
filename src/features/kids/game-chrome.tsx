@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
-import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, type ReactNode } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GridBackground } from '@/components/grid-background';
-import { ArrowClockwiseIcon, ArrowLeftIcon, StarIcon, TrophyIcon } from '@/components/icons';
+import { ArrowClockwiseIcon, ArrowLeftIcon, SpeakerHighIcon, SpeakerSlashIcon, StarIcon, TrophyIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
+import { useSoundSettings } from '@/features/kids/sound';
 import { pressedStyle } from '@/theme/common-styles';
 import { fonts } from '@/theme/fonts';
 import type { LabColors } from '@/theme/palette';
@@ -41,19 +42,38 @@ export function GameScreen({ children, scrollEnabled = true }: { children: React
   );
 }
 
-/** Botón "Salir" y marcador de aciertos. */
+/** Botón "Salir", botón de sonido y marcador de aciertos (que "salta" cuando cambia). */
 export function GameTopBar({ score, total }: { score: number; total?: number }) {
   const lab = useLabColors();
+  const { muted, toggleMuted } = useSoundSettings();
   const text = total ? `${score} / ${total}` : `${score} aciertos`;
+  const bump = useAnimatedValue(1);
+
+  useEffect(() => {
+    if (score === 0) return;
+    bump.setValue(1.25);
+    Animated.spring(bump, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 14 }).start();
+  }, [bump, score]);
+
   return (
     <View style={styles.topBar}>
       <Pressable accessibilityRole="button" onPress={() => router.back()} style={({ pressed }) => [styles.back, stamp(lab), pressed && pressedStyle]}>
         <ArrowLeftIcon color={lab.text} size={18} weight="bold" />
         <Text style={[styles.backText, { color: lab.text }]}>Salir</Text>
       </Pressable>
-      <View accessibilityLabel={`Aciertos: ${text}`} style={[styles.score, stamp(lab, 4, lab.amber)]}>
-        <StarIcon color={lab.onBright} size={16} weight="fill" />
-        <Text style={[styles.scoreText, { color: lab.onBright }]}>{text}</Text>
+      <View style={styles.topRight}>
+        <Pressable
+          accessibilityLabel={muted ? 'Activar sonido' : 'Silenciar'}
+          accessibilityRole="button"
+          onPress={toggleMuted}
+          style={({ pressed }) => [styles.soundButton, stamp(lab), pressed && pressedStyle]}
+        >
+          {muted ? <SpeakerSlashIcon color={lab.muted} size={20} weight="duotone" /> : <SpeakerHighIcon color={lab.text} size={20} weight="duotone" />}
+        </Pressable>
+        <Animated.View accessibilityLabel={`Aciertos: ${text}`} style={[styles.score, stamp(lab, 4, lab.amber), { transform: [{ scale: bump }] }]}>
+          <StarIcon color={lab.onBright} size={16} weight="fill" />
+          <Text style={[styles.scoreText, { color: lab.onBright }]}>{text}</Text>
+        </Animated.View>
       </View>
     </View>
   );
@@ -109,6 +129,8 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 44, borderRadius: 14, paddingHorizontal: 14 },
   backText: { fontFamily: fonts.bodyBold, fontSize: 14 },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  soundButton: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   score: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 40, borderRadius: 999, paddingHorizontal: 12 },
   scoreText: { fontFamily: fonts.monoBold, fontSize: 12 },
   mission: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 22, padding: 16, marginBottom: 16 },

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { LoadingScreen } from '@/components/loading-screen';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { ThemeProvider, useAppTheme } from '@/context/theme-context';
+import { SoundProvider } from '@/features/kids/sound';
 import { fontAssets } from '@/theme/fonts';
 
 // Mantiene la pantalla de arranque nativa hasta que las fuentes estén listas.
@@ -30,7 +31,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <RootNavigator />
+        <SoundProvider>
+          <RootNavigator />
+        </SoundProvider>
       </AuthProvider>
     </ThemeProvider>
   );
