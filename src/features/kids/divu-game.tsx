@@ -47,6 +47,14 @@ const DIVU = { width: 184, height: 130, right: 0, bottom: 40 };
 const TRASH = { size: 86, left: 14, bottom: 22 };
 
 const divuSource = require('@/assets/images/serpiente-normal.png');
+// Caras de Divu. Las tres imágenes están alineadas (el cuerpo ocupa los mismos píxeles):
+// al cambiar de una a otra solo se mueve la cabeza.
+type Face = 'normal' | 'happy' | 'disgust';
+const faces: { face: Face; source: number; label: string }[] = [
+  { face: 'normal', source: divuSource, label: 'Divu, la serpiente' },
+  { face: 'happy', source: require('@/assets/images/divu-masticando.png'), label: 'Divu masticando feliz' },
+  { face: 'disgust', source: require('@/assets/images/divu-disgustado.png'), label: 'Divu con cara de disgusto' },
+];
 const sounds = {
   music: require('@/assets/sounds/music-divu.wav'),
   pop: require('@/assets/sounds/pop.wav'),
@@ -116,6 +124,19 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const happy = useAnimatedValue(0); // salto de alegría
   const shake = useAnimatedValue(0); // Divu niega con la cabeza
   const sparkle = useAnimatedValue(0); // chispas de festejo
+  // Opacidad de cada cara de Divu (se funden entre sí).
+  const faceNormal = useAnimatedValue(1);
+  const faceHappy = useAnimatedValue(0);
+  const faceDisgust = useAnimatedValue(0);
+  const [face, setFace] = useState<Face>('normal');
+
+  /** Cambia la cara de Divu con un fundido suave. */
+  const showFace = (next: Face) => {
+    setFace(next);
+    const to = (value: Animated.Value, visible: boolean) => Animated.timing(value, { toValue: visible ? 1 : 0, duration: 160, useNativeDriver: true });
+    Animated.parallel([to(faceNormal, next === 'normal'), to(faceHappy, next === 'happy'), to(faceDisgust, next === 'disgust')]).start();
+  };
+  const faceOpacity: Record<Face, Animated.Value> = { normal: faceNormal, happy: faceHappy, disgust: faceDisgust };
   const cloudA = useAnimatedValue(0);
   const cloudB = useAnimatedValue(0);
   const resultIn = useAnimatedValue(0); // la tarjeta de resultado entra con un rebote
@@ -266,12 +287,15 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
           Animated.timing(shake, { toValue: 0, duration: 80, useNativeDriver: true }),
         ]).start();
       }
+      // Masticando si comió algo bueno; disgustado si le diste chatarra o tiraste su comida.
+      showFace(!correct ? 'disgust' : target === 'divu' ? 'happy' : 'normal');
       setResult({ outcome: correct ? 'correct' : 'wrong', target });
       setPhase('result');
     }, target === 'divu' ? 280 : 480);
   };
 
   const next = () => {
+    showFace('normal');
     setFoodBehindTrash(false);
     setResult(null);
     setPhase('drop');
@@ -279,6 +303,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   };
 
   const restart = () => {
+    showFace('normal');
     setFoodBehindTrash(false);
     setScore(0);
     setResult(null);
@@ -410,7 +435,14 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
           pointerEvents="none"
           style={[styles.divu, { right: DIVU.right, bottom: DIVU.bottom, transform: [{ translateY: swayY }, { translateY: happyY }, { scale: happyScale }, { rotate: shakeRotate }] }]}
         >
-          <Image accessibilityLabel="Divu, la serpiente" contentFit="contain" source={divuSource} style={{ width: DIVU.width, height: DIVU.height }} />
+          {/* Las tres caras están cargadas y encimadas; solo cambia cuál se ve. */}
+          <View accessibilityLabel={faces.find((item) => item.face === face)?.label} style={{ width: DIVU.width, height: DIVU.height }}>
+            {faces.map((item) => (
+              <Animated.View key={item.face} style={[StyleSheet.absoluteFill, { opacity: faceOpacity[item.face] }]}>
+                <Image contentFit="contain" source={item.source} style={StyleSheet.absoluteFill} />
+              </Animated.View>
+            ))}
+          </View>
           <Text style={styles.divuName}>Divu</Text>
         </Animated.View>
 
