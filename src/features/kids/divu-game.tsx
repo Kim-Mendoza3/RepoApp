@@ -15,7 +15,7 @@ import {
 
 import { ArrowRightIcon, ConfettiIcon, HandSwipeRightIcon, HeartIcon, StarIcon, TimerIcon, TrashIcon, XCircleIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
-import { Cloud, SavannaBackground, TrashCan } from '@/features/kids/divu-scene-art';
+import { Cloud, SavannaBackground, TRASH_LID, TRASH_RATIO, TrashCanBody, TrashCanLid } from '@/features/kids/divu-scene-art';
 import { FoodArt, type FoodKind } from '@/features/kids/food-art';
 import { GameButton, GameFinish, GameTopBar, MissionCard, stamp } from '@/features/kids/game-chrome';
 import { useBackgroundMusic, useSfx } from '@/features/kids/sound';
@@ -53,6 +53,7 @@ const sounds = {
   grab: require('@/assets/sounds/grab.wav'),
   chomp: require('@/assets/sounds/chomp.wav'),
   trash: require('@/assets/sounds/trash.wav'),
+  lid: require('@/assets/sounds/lid.wav'),
   correct: require('@/assets/sounds/correct.wav'),
   wrong: require('@/assets/sounds/wrong.wav'),
   timeout: require('@/assets/sounds/timeout.wav'),
@@ -86,6 +87,8 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const [phase, setPhase] = useState<'drop' | 'play' | 'result'>('drop');
   const [result, setResult] = useState<Result | null>(null);
   const [sceneWidth, setSceneWidth] = useState(0);
+  // Al caer al bote, la comida pasa DETRÁS del frente del bote para que se vea entrar por la boca.
+  const [foodBehindTrash, setFoodBehindTrash] = useState(false);
   const sceneHeight = sceneWidth ? Math.min(sceneWidth * SCENE_RATIO, MAX_SCENE_HEIGHT) : 440;
   const finished = round >= ROUNDS;
   const food = deck[Math.min(round, ROUNDS - 1)];
@@ -96,6 +99,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const playGrab = useSfx(sounds.grab, 0.5);
   const playChomp = useSfx(sounds.chomp, 0.9);
   const playTrash = useSfx(sounds.trash, 0.8);
+  const playLid = useSfx(sounds.lid, 0.7);
   const playCorrect = useSfx(sounds.correct, 0.8);
   const playWrong = useSfx(sounds.wrong, 0.7);
   const playTimeout = useSfx(sounds.timeout, 0.7);
@@ -115,7 +119,17 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const cloudA = useAnimatedValue(0);
   const cloudB = useAnimatedValue(0);
   const resultIn = useAnimatedValue(0); // la tarjeta de resultado entra con un rebote
+  const lidOpen = useAnimatedValue(0); // tapa del bote: 0 cerrada, 1 abierta
+  const trashShake = useAnimatedValue(0); // sacudida del bote al recibir la comida
   const roundToken = useRef(0); // invalida temporizadores de rondas anteriores
+  const lidIsOpen = useRef(false); // evita repetir la animación de la tapa en cada movimiento del dedo
+
+  /** Abre o cierra la tapa del bote (solo si cambia de estado). */
+  const setLid = (open: boolean) => {
+    if (lidIsOpen.current === open) return;
+    lidIsOpen.current = open;
+    Animated.spring(lidOpen, { toValue: open ? 1 : 0, useNativeDriver: true, speed: open ? 22 : 16, bounciness: open ? 10 : 4 }).start();
+  };
 
   // Animaciones de ambiente: Divu se balancea, la comida se mece y las nubes cruzan el cielo.
   useEffect(() => {
@@ -145,6 +159,8 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     lift.setValue(1);
     drop.setValue(0);
     timer.setValue(1);
+    lidIsOpen.current = false;
+    lidOpen.setValue(0);
     playPop();
     Animated.spring(drop, { toValue: 1, useNativeDriver: true, speed: 9, bounciness: 12 }).start(() => {
       if (roundToken.current !== token) return;
@@ -178,22 +194,56 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const foodCenter = { x: sceneWidth / 2, y: FOOD_TOP + FOOD_SIZE / 2 };
   const divuCenter = { x: sceneWidth - DIVU.right - DIVU.width * 0.55, y: sceneHeight - DIVU.bottom - DIVU.height * 0.5 };
   const trashCenter = { x: TRASH.left + TRASH.size / 2, y: sceneHeight - TRASH.bottom - TRASH.size * 0.55 };
+  // Boca del bote (donde termina la tapa): ahí cae la comida.
+  const trashHeight = TRASH.size * TRASH_RATIO;
+  const trashMouth = { x: TRASH.left + TRASH.size / 2, y: sceneHeight - TRASH.bottom - trashHeight + (trashHeight * 35) / 115 };
+
+  /** La comida entra al bote: se abre la tapa, cae adentro, el bote se sacude y la tapa se cierra. */
+  const dropIntoTrash = () => {
+    setLid(true);
+    const offset = (point: { x: number; y: number }) => ({ x: point.x - foodCenter.x, y: point.y - foodCenter.y });
+    Animated.sequence([
+      // Sube un poco sobre la boca del bote…
+      Animated.timing(position, { toValue: offset({ x: trashMouth.x, y: trashMouth.y - 34 }), duration: 200, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      // …y cae adentro mientras se encoge.
+      Animated.parallel([
+        Animated.timing(position, { toValue: offset({ x: trashMouth.x, y: trashMouth.y + 12 }), duration: 190, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(vanish, { toValue: 0, duration: 190, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ]),
+    ]).start();
+    setTimeout(() => setFoodBehindTrash(true), 200); // empieza a caer: ya va dentro del bote
+    setTimeout(playTrash, 300);
+    // El golpe sacude el bote y después se cierra la tapa.
+    setTimeout(() => {
+      trashShake.setValue(0);
+      Animated.sequence([
+        Animated.timing(trashShake, { toValue: 1, duration: 60, useNativeDriver: true }),
+        Animated.timing(trashShake, { toValue: -1, duration: 90, useNativeDriver: true }),
+        Animated.timing(trashShake, { toValue: 0.6, duration: 80, useNativeDriver: true }),
+        Animated.timing(trashShake, { toValue: 0, duration: 70, useNativeDriver: true }),
+      ]).start(() => {
+        setLid(false);
+        setTimeout(playLid, 120);
+      });
+    }, 390);
+  };
 
   const resolve = (target: Target) => {
     if (phase !== 'play' || !food) return;
     roundToken.current += 1; // detiene el reloj de esta ronda
     timer.stopAnimation();
-    const center = target === 'divu' ? divuCenter : trashCenter;
     const correct = (target === 'divu') === food.edible;
 
-    // La comida vuela hasta su destino y se encoge.
-    Animated.parallel([
-      Animated.timing(position, { toValue: { x: center.x - foodCenter.x, y: center.y - foodCenter.y }, duration: 240, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-      Animated.timing(vanish, { toValue: 0, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-    ]).start();
-
-    if (target === 'divu') playChomp();
-    else playTrash();
+    if (target === 'divu') {
+      // La comida vuela hasta Divu y se encoge.
+      Animated.parallel([
+        Animated.timing(position, { toValue: { x: divuCenter.x - foodCenter.x, y: divuCenter.y - foodCenter.y }, duration: 240, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(vanish, { toValue: 0, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ]).start();
+      playChomp();
+    } else {
+      dropIntoTrash();
+    }
 
     setTimeout(() => {
       if (correct) {
@@ -218,16 +268,18 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
       }
       setResult({ outcome: correct ? 'correct' : 'wrong', target });
       setPhase('result');
-    }, 280);
+    }, target === 'divu' ? 280 : 480);
   };
 
   const next = () => {
+    setFoodBehindTrash(false);
     setResult(null);
     setPhase('drop');
     setRound((value) => value + 1);
   };
 
   const restart = () => {
+    setFoodBehindTrash(false);
     setScore(0);
     setResult(null);
     setPhase('drop');
@@ -248,18 +300,26 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
       playGrab();
       Animated.spring(lift, { toValue: 1.18, useNativeDriver: true, speed: 30, bounciness: 10 }).start();
     },
-    onPanResponderMove: (_event, gesture) => position.setValue({ x: gesture.dx, y: gesture.dy }),
+    onPanResponderMove: (_event, gesture) => {
+      position.setValue({ x: gesture.dx, y: gesture.dy });
+      // La tapa se abre cuando la comida se acerca al bote y se cierra si se aleja.
+      const x = foodCenter.x + gesture.dx;
+      const y = foodCenter.y + gesture.dy;
+      setLid(Math.hypot(x - trashMouth.x, y - trashMouth.y) < 125);
+    },
     onPanResponderRelease: (_event, gesture) => {
       onDraggingChange?.(false);
       Animated.spring(lift, { toValue: 1, useNativeDriver: true }).start();
       const x = foodCenter.x + gesture.dx;
       const y = foodCenter.y + gesture.dy;
       if (Math.hypot(x - divuCenter.x, y - divuCenter.y) < 88) return resolve('divu');
-      if (Math.hypot(x - trashCenter.x, y - trashCenter.y) < 72) return resolve('trash');
+      if (Math.hypot(x - trashCenter.x, y - trashCenter.y) < 80) return resolve('trash');
+      setLid(false);
       Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: true, speed: 16, bounciness: 9 }).start();
     },
     onPanResponderTerminate: () => {
       onDraggingChange?.(false);
+      setLid(false);
       Animated.spring(lift, { toValue: 1, useNativeDriver: true }).start();
       Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
     },
@@ -293,6 +353,8 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const sparkleOpacity = sparkle.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 1, 1, 0] });
   const plusY = sparkle.interpolate({ inputRange: [0, 1], outputRange: [0, -46] });
   const resultScale = resultIn.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+  const lidRotate = lidOpen.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-62deg'] });
+  const trashShakeRotate = trashShake.interpolate({ inputRange: [-1, 1], outputRange: ['-7deg', '7deg'] });
 
   const outcome = result?.outcome;
   const feedback = outcome === 'correct'
@@ -329,9 +391,19 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
         <Animated.View pointerEvents="none" style={[styles.cloud, { top: 46, opacity: 0.8, transform: [{ translateX: cloudBX }, { scale: 0.7 }] }]}><Cloud width={96} /></Animated.View>
 
         {/* Bote de basura */}
-        <View pointerEvents="none" style={[styles.trash, { left: TRASH.left, bottom: TRASH.bottom }]}>
-          <TrashCan open={phase === 'play'} size={TRASH.size} />
-        </View>
+        <Animated.View pointerEvents="none" style={[styles.trash, { left: TRASH.left, bottom: TRASH.bottom, transform: [{ rotate: trashShakeRotate }] }]}>
+          <TrashCanBody size={TRASH.size} />
+          {/* La tapa gira desde su bisagra (lado izquierdo). */}
+          <Animated.View
+            style={[styles.trashLid, {
+              top: (TRASH.size * TRASH_LID.top) / 100,
+              transformOrigin: [(TRASH.size * TRASH_LID.hingeX) / 100, (TRASH.size * (TRASH_LID.hingeY - TRASH_LID.top)) / 100, 0],
+              transform: [{ rotate: lidRotate }],
+            }]}
+          >
+            <TrashCanLid size={TRASH.size} />
+          </Animated.View>
+        </Animated.View>
 
         {/* Divu */}
         <Animated.View
@@ -374,7 +446,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
             {...panResponder.panHandlers}
             accessibilityHint="Arrástrala hasta Divu o al bote de basura, o usa los botones de abajo"
             accessibilityLabel={`Comida: ${food.name}`}
-            style={[styles.food, {
+            style={[styles.food, foodBehindTrash && styles.foodBehind, {
               left: sceneWidth / 2 - FOOD_SIZE / 2,
               opacity: vanish,
               transform: [
@@ -442,13 +514,15 @@ const styles = StyleSheet.create({
   missionSnake: { width: 82, height: 72, transform: [{ rotate: '-12deg' }] },
   scene: { borderRadius: 22, borderWidth: 2, overflow: 'hidden', position: 'relative' },
   cloud: { position: 'absolute', left: 0 },
-  trash: { position: 'absolute' },
+  trash: { position: 'absolute', transformOrigin: 'bottom', zIndex: 5 },
+  trashLid: { position: 'absolute', left: 0 },
   divu: { position: 'absolute', alignItems: 'center' },
   divuName: { backgroundColor: '#166534', borderRadius: 10, color: '#FFFFFF', fontFamily: fonts.monoBold, fontSize: 11, paddingHorizontal: 8, paddingVertical: 3, marginTop: -16, overflow: 'hidden' },
   sparkles: { position: 'absolute', width: 120, height: 120, alignItems: 'center', justifyContent: 'center' },
   sparkle: { position: 'absolute' },
   plusOne: { position: 'absolute', color: '#FFFFFF', fontFamily: fonts.display, fontSize: 26, textShadowColor: 'rgba(0,0,0,0.35)', textShadowRadius: 4, textShadowOffset: { width: 0, height: 2 } },
   food: { position: 'absolute', top: FOOD_TOP, width: FOOD_SIZE, height: FOOD_SIZE, zIndex: 10 },
+  foodBehind: { zIndex: 2 },
   roundRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 },
   resultOverlay: { position: 'absolute', top: 14, left: 12, right: 12, zIndex: 20 },
   roundCopy: { flexShrink: 1 },

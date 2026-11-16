@@ -374,8 +374,20 @@ def make_music_divu(out):
     save(final, out / 'music-divu.wav', peak=0.8)
 
 
+def make_lid(out):
+    """Tapa del bote al cerrarse: "clanc" metálico (parciales inarmónicos que se apagan rápido)."""
+    b = silence(0.35)
+    noise(b, 0, 0.02, 0.6, cutoff=0.8, adsr=(0.001, 0.01, 0.3, 0.008))
+    for freq, vol, decay in ((520, 0.5, 0.18), (1310, 0.28, 0.12), (2240, 0.16, 0.08), (180, 0.35, 0.1)):
+        tone(b, 0, decay * 1.6, freq, 'sine', vol, adsr=(0.001, decay * 0.3, 0.25, decay))
+    save(b, out / 'lid.wav', peak=0.7)
+
+
 if __name__ == '__main__':
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
     make_effects(out)
     make_music_divu(out)
+    # Los sonidos nuevos van después de la música: el ruido usa una secuencia aleatoria con
+    # semilla fija, y así la música aprobada no cambia al agregar efectos.
+    make_lid(out)

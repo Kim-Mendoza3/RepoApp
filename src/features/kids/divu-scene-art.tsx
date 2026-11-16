@@ -88,30 +88,49 @@ export function SavannaBackground() {
   );
 }
 
-/** Bote de basura: aquí va la comida que Divu NO debe comer. */
-export function TrashCan({ size = 76, open = false }: { size?: number; open?: boolean }) {
+// BOTE DE BASURA: aquí va la comida que Divu NO debe comer.
+// Se dibuja en dos piezas (cuerpo y tapa) para que la tapa pueda abrirse y cerrarse con animación.
+// Ambas comparten el mismo sistema de coordenadas: 100 de ancho por 115 de alto.
+
+/** Proporción alto/ancho del bote completo. */
+export const TRASH_RATIO = 1.15;
+/** Dónde empieza la tapa (en unidades del dibujo, de 0 a 115) y su bisagra (lado izquierdo). */
+export const TRASH_LID = { top: 14, height: 24, hingeX: 15, hingeY: 30 };
+
+/** Cuerpo del bote (sin tapa), con la boca oscura visible cuando la tapa se abre. */
+export function TrashCanBody({ size = 76 }: { size?: number }) {
   return (
-    <Svg width={size} height={size * 1.15} viewBox="0 0 100 115">
+    <Svg width={size} height={size * TRASH_RATIO} viewBox="0 0 100 115">
       <Defs>
         <LinearGradient id="canBody" x1="0" y1="0" x2="1" y2="0">
           <Stop offset="0" stopColor="#5E7186" />
           <Stop offset="0.5" stopColor="#8EA2B6" />
           <Stop offset="1" stopColor="#4F6074" />
         </LinearGradient>
+      </Defs>
+      <Ellipse cx="50" cy="110" rx="34" ry="4" fill="#000000" opacity={0.18} />
+      <Path d="M20 34 L80 34 L73 106 Q72 110 68 110 L32 110 Q28 110 27 106 Z" fill="url(#canBody)" />
+      <Ellipse cx="50" cy="35" rx="30" ry="4.5" fill="#28323D" />
+      <Rect x="36" y="44" width="5" height="56" rx="2.5" fill="#3F4E60" opacity={0.45} />
+      <Rect x="48" y="44" width="5" height="56" rx="2.5" fill="#3F4E60" opacity={0.45} />
+      <Rect x="60" y="44" width="5" height="56" rx="2.5" fill="#3F4E60" opacity={0.45} />
+    </Svg>
+  );
+}
+
+/** Tapa del bote: solo la franja superior del dibujo (de y=14 a y=38). */
+export function TrashCanLid({ size = 76 }: { size?: number }) {
+  return (
+    <Svg width={size} height={(size * TRASH_LID.height) / 100} viewBox={`0 ${TRASH_LID.top} 100 ${TRASH_LID.height}`}>
+      <Defs>
         <LinearGradient id="canLid" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0" stopColor="#9DB0C3" />
           <Stop offset="1" stopColor="#647A90" />
         </LinearGradient>
       </Defs>
-      <Ellipse cx="50" cy="110" rx="34" ry="4" fill="#000000" opacity={0.18} />
-      <Path d="M20 34 L80 34 L73 106 Q72 110 68 110 L32 110 Q28 110 27 106 Z" fill="url(#canBody)" />
-      <Rect x="36" y="44" width="5" height="56" rx="2.5" fill="#3F4E60" opacity={0.45} />
-      <Rect x="48" y="44" width="5" height="56" rx="2.5" fill="#3F4E60" opacity={0.45} />
-      <Rect x="60" y="44" width="5" height="56" rx="2.5" fill="#3F4E60" opacity={0.45} />
-      <G transform={open ? 'rotate(-28 18 30)' : undefined}>
-        <Rect x="14" y="24" width="72" height="11" rx="5" fill="url(#canLid)" />
-        <Rect x="40" y="16" width="20" height="9" rx="4" fill="#647A90" />
-      </G>
+      <Rect x="14" y="24" width="72" height="11" rx="5" fill="url(#canLid)" />
+      <Rect x="40" y="16" width="20" height="9" rx="4" fill="#647A90" />
+      <Circle cx="17" cy="30" r="2.2" fill="#3F4E60" />
     </Svg>
   );
 }
