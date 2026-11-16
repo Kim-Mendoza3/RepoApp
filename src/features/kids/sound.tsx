@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAudioPlayer, type AudioSource } from 'expo-audio';
+import { setAudioModeAsync, useAudioPlayer, type AudioSource } from 'expo-audio';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
@@ -22,6 +22,10 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY).then((value) => {
       if (value === '1') setMuted(true);
     }).catch(() => {});
+    // Sin esto, iOS trata el audio como "ambiente" y lo apaga con el interruptor de silencio
+    // del iPhone. Los juegos suenan aunque el teléfono esté en silencio; para callarlos
+    // está el botón de bocina del juego. 'mixWithOthers' no interrumpe la música de otras apps.
+    setAudioModeAsync({ playsInSilentMode: true, interruptionMode: 'mixWithOthers', shouldPlayInBackground: false }).catch(() => {});
   }, []);
 
   const value = useMemo<SoundContextValue>(() => ({

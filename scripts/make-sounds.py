@@ -383,6 +383,19 @@ def make_lid(out):
     save(b, out / 'lid.wav', peak=0.7)
 
 
+def make_chew(out):
+    """Divu mastica (ligero): cuatro mordiditas suaves y húmedas y un "glup" al tragar."""
+    b = silence(1.05)
+    for k, (start, vol) in enumerate(((0.0, 0.55), (0.2, 0.45), (0.38, 0.5), (0.58, 0.38))):
+        # Mordida: ruido muy filtrado (sonido apagado, "húmedo") con un golpecito grave.
+        noise(b, start, 0.09, vol, cutoff=0.07 + 0.01 * k, adsr=(0.006, 0.03, 0.4, 0.04))
+        tone(b, start, 0.07, 140 - 8 * k, 'sine', vol * 0.5, freq_end=90, adsr=(0.004, 0.02, 0.3, 0.03))
+    # Glup: tono que baja rápido, como al tragar.
+    tone(b, 0.8, 0.16, 320, 'sine', 0.45, freq_end=150, adsr=(0.008, 0.04, 0.5, 0.08))
+    noise(b, 0.8, 0.1, 0.15, cutoff=0.05, adsr=(0.005, 0.03, 0.3, 0.05))
+    save(b, out / 'chew.wav', peak=0.6)
+
+
 if __name__ == '__main__':
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
@@ -391,3 +404,4 @@ if __name__ == '__main__':
     # Los sonidos nuevos van después de la música: el ruido usa una secuencia aleatoria con
     # semilla fija, y así la música aprobada no cambia al agregar efectos.
     make_lid(out)
+    make_chew(out)

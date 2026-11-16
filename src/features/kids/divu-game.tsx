@@ -59,7 +59,7 @@ const sounds = {
   music: require('@/assets/sounds/music-divu.wav'),
   pop: require('@/assets/sounds/pop.wav'),
   grab: require('@/assets/sounds/grab.wav'),
-  chomp: require('@/assets/sounds/chomp.wav'),
+  chew: require('@/assets/sounds/chew.wav'),
   trash: require('@/assets/sounds/trash.wav'),
   lid: require('@/assets/sounds/lid.wav'),
   correct: require('@/assets/sounds/correct.wav'),
@@ -105,7 +105,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   useBackgroundMusic(sounds.music, 0.32);
   const playPop = useSfx(sounds.pop, 0.6);
   const playGrab = useSfx(sounds.grab, 0.5);
-  const playChomp = useSfx(sounds.chomp, 0.9);
+  const playChew = useSfx(sounds.chew, 0.85);
   const playTrash = useSfx(sounds.trash, 0.8);
   const playLid = useSfx(sounds.lid, 0.7);
   const playCorrect = useSfx(sounds.correct, 0.8);
@@ -261,7 +261,8 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
         Animated.timing(position, { toValue: { x: divuCenter.x - foodCenter.x, y: divuCenter.y - foodCenter.y }, duration: 240, easing: Easing.in(Easing.quad), useNativeDriver: true }),
         Animated.timing(vanish, { toValue: 0, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }),
       ]).start();
-      playChomp();
+      // Solo mastica si la acepta (algo que sí come); la chatarra la rechaza con cara de disgusto.
+      if (food.edible) setTimeout(playChew, 200);
     } else {
       dropIntoTrash();
     }
