@@ -68,8 +68,12 @@ export function useSfx(source: AudioSource, volume = 0.8) {
   }, [muted, player]);
 }
 
-/** Música de fondo en bucle: suena mientras el componente está montado, la app está al frente y no hay silencio. */
-export function useBackgroundMusic(source: AudioSource, volume = 0.35) {
+/**
+ * Música de fondo en bucle: suena mientras el componente está montado, la app está al frente,
+ * no hay silencio y `playing` es true. Al pasar `playing` a false (fin de la partida) se apaga
+ * con un desvanecido corto y vuelve al inicio, para no encimarse con la fanfarria final.
+ */
+export function useBackgroundMusic(source: AudioSource, volume = 0.35, playing = true) {
   const player = useAudioPlayer(source);
   const { muted } = useSoundSettings();
   const [appActive, setAppActive] = useState(AppState.currentState === 'active');
@@ -88,10 +92,36 @@ export function useBackgroundMusic(source: AudioSource, volume = 0.35) {
 
   useEffect(() => {
     try {
-      if (!muted && appActive) player.play();
-      else player.pause();
+      if (!muted && appActive && playing) {
+        // eslint-disable-next-line react-hooks/immutability -- expo-audio se configura por asignación
+        player.volume = volume;
+        player.play();
+        return;
+      }
+      if (playing) {
+        player.pause(); // silencio o app en segundo plano: pausa (al volver sigue donde iba)
+        return;
+      }
+      // Fin de la partida: baja el volumen en ~0,4 s, pausa y regresa al inicio.
+      const steps = 8;
+      let step = 0;
+      const fade = setInterval(() => {
+        step += 1;
+        try {
+          player.volume = volume * Math.max(0, 1 - step / steps);
+          if (step >= steps) {
+            clearInterval(fade);
+            player.pause();
+            player.seekTo(0);
+            player.volume = volume;
+          }
+        } catch {
+          clearInterval(fade);
+        }
+      }, 50);
+      return () => clearInterval(fade);
     } catch {
       // Si el audio no está disponible, el juego sigue sin música.
     }
-  }, [appActive, muted, player]);
+  }, [appActive, muted, player, playing, volume]);
 }

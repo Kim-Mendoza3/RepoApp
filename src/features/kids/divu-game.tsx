@@ -102,7 +102,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const food = deck[Math.min(round, ROUNDS - 1)];
 
   // Sonido
-  useBackgroundMusic(sounds.music, 0.32);
+  useBackgroundMusic(sounds.music, 0.32, !finished); // se apaga al terminar, antes de la fanfarria
   const playPop = useSfx(sounds.pop, 0.6);
   const playGrab = useSfx(sounds.grab, 0.5);
   const playChew = useSfx(sounds.chew, 0.85);
