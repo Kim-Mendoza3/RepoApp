@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
-  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 
 import { ArrowRightIcon, ConfettiIcon, HandSwipeRightIcon, HeartIcon, StarIcon, TimerIcon, TrashIcon, XCircleIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
@@ -195,7 +195,9 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     lidIsOpen.current = false;
     lidOpen.setValue(0);
     playPop();
-    Animated.spring(drop, { toValue: 1, useNativeDriver: true, speed: 9, bounciness: 12 }).start(() => {
+    // Se puede arrastrar en cuanto el rebote ya no se nota (~0,4 s): con los umbrales por defecto,
+    // el resorte esperaba a quedar perfectamente quieto y la comida no respondía al tocarla.
+    Animated.spring(drop, { toValue: 1, useNativeDriver: true, speed: 9, bounciness: 12, restDisplacementThreshold: 0.02, restSpeedThreshold: 0.2 }).start(() => {
       if (roundToken.current !== token) return;
       setPhase('play');
       Animated.timing(timer, { toValue: 0, duration: ROUND_MS, easing: Easing.linear, useNativeDriver: true }).start(({ finished: done }) => {
@@ -322,45 +324,44 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     setDeck(makeDeck());
   };
 
-  // roundToken (un ref) solo se lee dentro de los manejadores del gesto, nunca al dibujar:
-  // el aviso de react-hooks/refs aquí es un falso positivo.
-  // eslint-disable-next-line react-hooks/refs
-  const panResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => phase === 'play',
-    onMoveShouldSetPanResponder: () => phase === 'play',
-    // Una vez que el dedo toma la comida, no se la cedemos al scroll ni a otros gestos.
-    onPanResponderTerminationRequest: () => false,
-    onPanResponderGrant: () => {
+  /** La comida regresa a su lugar (se soltó lejos o el gesto se canceló). */
+  const returnFood = () => {
+    setLid(false);
+    Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: true, speed: 16, bounciness: 9 }).start();
+  };
+
+  // Arrastre con react-native-gesture-handler: el gesto se reconoce en el lado nativo desde que
+  // el dedo toca la comida. Con PanResponder (JavaScript), en Android un arrastre rápido se lo
+  // "robaba" el scroll de la pantalla antes de que JavaScript alcanzara a reclamarlo.
+  const pan = usePanGesture({
+    enabled: phase === 'play' && !!food,
+    minDistance: 0, // se activa al tocar, sin esperar a que el dedo se mueva
+    runOnJS: true, // los callbacks corren en JavaScript (usan estado y sonidos del juego)
+    disableReanimated: true,
+    onActivate: () => {
       onDraggingChange?.(true);
       playGrab();
       Animated.spring(lift, { toValue: 1.18, useNativeDriver: true, speed: 30, bounciness: 10 }).start();
     },
-    onPanResponderMove: (_event, gesture) => {
-      position.setValue({ x: gesture.dx, y: gesture.dy });
+    onUpdate: (event) => {
+      position.setValue({ x: event.translationX, y: event.translationY });
       // La tapa se abre cuando la comida se acerca al bote y se cierra si se aleja.
-      const x = foodCenter.x + gesture.dx;
-      const y = foodCenter.y + gesture.dy;
+      const x = foodCenter.x + event.translationX;
+      const y = foodCenter.y + event.translationY;
       setLid(Math.hypot(x - trashMouth.x, y - trashMouth.y) < 125);
     },
-    onPanResponderRelease: (_event, gesture) => {
+    onDeactivate: (event) => {
       onDraggingChange?.(false);
       Animated.spring(lift, { toValue: 1, useNativeDriver: true }).start();
-      const x = foodCenter.x + gesture.dx;
-      const y = foodCenter.y + gesture.dy;
+      if (event.canceled) return returnFood();
+      const x = foodCenter.x + event.translationX;
+      const y = foodCenter.y + event.translationY;
       if (Math.hypot(x - divuCenter.x, y - divuCenter.y) < 88) return resolve('divu');
-      if (Math.hypot(x - trashCenter.x, y - trashCenter.y) < 80) return resolve('trash');
-      setLid(false);
-      Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: true, speed: 16, bounciness: 9 }).start();
+      // Si la tapa ya se abrió (la comida está cerca de la boca), soltarla ahí también cuenta.
+      if (lidIsOpen.current || Math.hypot(x - trashCenter.x, y - trashCenter.y) < 80) return resolve('trash');
+      returnFood();
     },
-    onPanResponderTerminate: () => {
-      onDraggingChange?.(false);
-      setLid(false);
-      Animated.spring(lift, { toValue: 1, useNativeDriver: true }).start();
-      Animated.spring(position, { toValue: { x: 0, y: 0 }, useNativeDriver: true }).start();
-    },
-    // `resolve` usa la ronda y el tamaño actuales; el responder se vuelve a crear cuando cambian.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [phase, food, sceneWidth, onDraggingChange]);
+  });
 
   if (finished) {
     return (
@@ -484,24 +485,25 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
 
         {/* Comida */}
         {phase !== 'result' && food ? (
-          <Animated.View
-            {...panResponder.panHandlers}
-            accessibilityHint="Arrástrala hasta Divu o al bote de basura, o usa los botones de abajo"
-            accessibilityLabel={`Comida: ${food.name}`}
-            style={[styles.food, foodBehindTrash && styles.foodBehind, {
-              left: sceneWidth / 2 - FOOD_SIZE / 2,
-              opacity: vanish,
-              transform: [
-                ...position.getTranslateTransform(),
-                { translateY: dropY },
-                { translateY: bobY },
-                { rotate: bobRotate },
-                { scale: Animated.multiply(lift, vanish) },
-              ],
-            }]}
-          >
-            <FoodArt kind={food.kind} size={FOOD_SIZE} />
-          </Animated.View>
+          <GestureDetector gesture={pan}>
+            <Animated.View
+              accessibilityHint="Arrástrala hasta Divu o al bote de basura, o usa los botones de abajo"
+              accessibilityLabel={`Comida: ${food.name}`}
+              style={[styles.food, foodBehindTrash && styles.foodBehind, {
+                left: sceneWidth / 2 - FOOD_SIZE / 2,
+                opacity: vanish,
+                transform: [
+                  ...position.getTranslateTransform(),
+                  { translateY: dropY },
+                  { translateY: bobY },
+                  { rotate: bobRotate },
+                  { scale: Animated.multiply(lift, vanish) },
+                ],
+              }]}
+            >
+              <FoodArt kind={food.kind} size={FOOD_SIZE} />
+            </Animated.View>
+          </GestureDetector>
         ) : null}
 
         {/* Resultado DENTRO del escenario (sobre el cielo), para que no quede fuera de la pantalla. */}

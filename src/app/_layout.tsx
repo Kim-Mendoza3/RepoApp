@@ -3,6 +3,8 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvide
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { LoadingScreen } from '@/components/loading-screen';
 import { AuthProvider, useAuth } from '@/context/auth-context';
@@ -28,14 +30,17 @@ export default function RootLayout() {
 
   if (!ready) return null;
 
+  // GestureHandlerRootView: necesario para los gestos nativos (arrastre de comida en el juego de Divu).
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <SoundProvider>
-          <RootNavigator />
-        </SoundProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <ThemeProvider>
+        <AuthProvider>
+          <SoundProvider>
+            <RootNavigator />
+          </SoundProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -76,3 +81,5 @@ function RootNavigator() {
     </NavigationThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({ root: { flex: 1 } });
