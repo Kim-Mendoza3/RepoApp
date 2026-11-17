@@ -133,13 +133,10 @@ def make_effects(out):
     tone(b, 0.18, 0.3, note('Bb3'), 'square', 0.25, duty=0.3, vib=0.025, adsr=(0.004, 0.05, 0.6, 0.15))
     save(b, out / 'wrong.wav', peak=0.65)
 
-    # Al bote de basura: barrido que baja + golpe metálico.
-    b = silence(0.42)
-    noise(b, 0, 0.22, 0.5, cutoff=0.5, adsr=(0.01, 0.05, 0.6, 0.1))
-    tone(b, 0, 0.22, 900, 'sine', 0.25, freq_end=250)
-    tone(b, 0.22, 0.18, 210, 'tri', 0.5, adsr=(0.002, 0.03, 0.3, 0.12))
-    tone(b, 0.22, 0.18, 525, 'sine', 0.2, adsr=(0.002, 0.03, 0.2, 0.12))
-    save(b, out / 'trash.wav')
+    # (Aquí estaba el primer sonido del bote; ahora es make_trash_bang). Consumimos el mismo
+    # ruido aleatorio que usaba para que la música, generada después, no cambie.
+    for _ in range(int(0.22 * SR)):
+        random.uniform(-1, 1)
 
     # Se acabó el tiempo: "tic-tic-toc".
     b = silence(0.42)
@@ -147,13 +144,7 @@ def make_effects(out):
         tone(b, k * 0.13, 0.07, f, 'square', 0.25, duty=0.2, adsr=(0.001, 0.02, 0.3, 0.03))
     save(b, out / 'timeout.wav', peak=0.6)
 
-    # Fin de la partida: fanfarria.
-    b = silence(1.5)
-    seq = [('G4', 0.0, 0.14), ('C5', 0.14, 0.14), ('E5', 0.28, 0.14), ('G5', 0.42, 0.3), ('E5', 0.72, 0.14), ('G5', 0.86, 0.6)]
-    for n, s, d in seq:
-        tone(b, s, d, note(n), 'square', 0.3, duty=0.25, adsr=(0.004, 0.05, 0.7, 0.08))
-        tone(b, s, d, note(n) / 2, 'tri', 0.35, adsr=(0.004, 0.05, 0.7, 0.08))
-    save(b, out / 'win.wav')
+    # La fanfarria final ahora es make_win_band (con banda completa).
 
 
 # ---------------------------------------------------------------------------
@@ -396,6 +387,127 @@ def make_chew(out):
     save(b, out / 'chew.wav', peak=0.6)
 
 
+def metal_hit(buf, start, vol=1.0, pitch=1.0):
+    """Golpe a un bote metálico: modos inarmónicos del cilindro (con batimiento) + chasquido inicial."""
+    n0 = int(start * SR)
+    # (frecuencia, volumen, tiempo de caída): los graves resuenan más, los agudos se apagan pronto.
+    modes = ((196, 0.55, 0.30), (201, 0.35, 0.26), (463, 0.45, 0.20), (741, 0.32, 0.14),
+             (1083, 0.24, 0.10), (1532, 0.18, 0.07), (2190, 0.12, 0.05))
+    low = 0.0
+    for i in range(int(0.7 * SR)):
+        t = i / SR
+        s = 0.0
+        for f, v, decay in modes:
+            s += v * math.sin(2 * math.pi * f * pitch * t) * math.exp(-t / decay)
+        if t < 0.012:  # chasquido del impacto (ruido brillante)
+            r = random.uniform(-1, 1)
+            low += 0.3 * (r - low)
+            s += 0.9 * (r - low) * (1 - t / 0.012)
+        _add(buf, n0 + i, vol * s * min(1.0, t / 0.0008))
+
+
+def make_trash_bang(out):
+    """La comida golpea el fondo del bote: "¡bonk!" grave + resonancia metálica + dos rebotes (la sacudida)."""
+    b = silence(0.9)
+    kick(b, 0, vol=0.7)  # el golpe sordo de la comida contra el fondo
+    metal_hit(b, 0, vol=0.6)
+    metal_hit(b, 0.11, vol=0.24, pitch=1.04)  # el bote se tambalea: rebotes más débiles
+    metal_hit(b, 0.2, vol=0.1, pitch=0.97)
+    for k in range(4):  # bolsa de basura que cruje un poquito
+        noise(b, 0.02 + 0.035 * k, 0.03, 0.18, cutoff=0.5, adsr=(0.001, 0.01, 0.3, 0.015))
+    wet = reverb(b, wet=0.12)
+    save([math.tanh(1.3 * (b[i] + wet[i])) for i in range(len(b))], out / 'trash.wav', peak=0.85)
+
+
+def brass(buf, start, length, freq, vol=0.2):
+    """Metales sintetizados: dientes de sierra desafinados con un filtro que se abre al soplar."""
+    n0 = int(start * SR)
+    phases = [0.0, 0.33, 0.66]
+    y = 0.0
+    for i in range(int(length * SR)):
+        t = i / SR
+        raw = 0.0
+        for k, d in enumerate((-0.004, 0.0, 0.005)):
+            phases[k] += freq * (1 + d) * (1 + 0.004 * math.sin(2 * math.pi * 5.5 * t) * min(1.0, t / 0.3)) / SR
+            raw += 2 * (phases[k] % 1.0) - 1
+        cutoff = 0.05 + 0.25 * math.exp(-t * 6) + 0.08 * min(1.0, t / 0.04)
+        y += cutoff * (raw / 3 - y)
+        e = min(1.0, t / 0.025) * min(1.0, max(0.0, (length - t) / 0.08))
+        _add(buf, n0 + i, vol * e * y)
+
+
+def crash(buf, start, vol=0.3, length=1.6):
+    """Platillo: ruido muy agudo que se apaga lento."""
+    n0 = int(start * SR)
+    low = 0.0
+    for i in range(int(length * SR)):
+        t = i / SR
+        r = random.uniform(-1, 1)
+        low += 0.55 * (r - low)
+        _add(buf, n0 + i, vol * (r - low) * math.exp(-t * 2.6) * min(1.0, t / 0.002))
+
+
+def glock(buf, start, freq, vol=0.2):
+    """Campanitas (glockenspiel): seno agudo con un armónico metálico."""
+    n0 = int(start * SR)
+    for i in range(int(0.8 * SR)):
+        t = i / SR
+        s = math.sin(2 * math.pi * freq * t) + 0.25 * math.sin(2 * math.pi * freq * 2.76 * t) * math.exp(-t * 12)
+        _add(buf, n0 + i, vol * s * math.exp(-t * 4.5) * min(1.0, t / 0.001))
+
+
+def make_win_band(out):
+    """Fin de la partida: fanfarria con banda completa (metales, kalimba, marimba, bajo, batería, platillo y campanitas)."""
+    beat = 0.5  # 120 bpm
+    size = int(3.8 * SR)
+    music = [0.0] * size
+    rhythm = [0.0] * size
+    # Acordes: Do – Fa – Sol – Do (el "final feliz" clásico).
+    chords = [(0.0, 2 * beat, 'C3', [0, 4, 7]), (2 * beat, beat, 'F3', [0, 4, 7]), (3 * beat, beat, 'G3', [0, 4, 7])]
+    for t0, length, root, triad in chords:
+        r = note(root)
+        sub_bass(rhythm, t0, min(length, beat) * 0.9, r / 2, vol=0.42)
+        if length > beat:
+            sub_bass(rhythm, t0 + beat, beat * 0.9, r / 2, vol=0.42)
+        steps = int(length / (beat / 2))
+        for k in range(steps):  # marimba en corcheas
+            semis = (triad + [12])[k % 4]
+            marimba(music, t0 + k * beat / 2, r * 2 * 2 ** (semis / 12), vol=0.16)
+    # Melodía de la fanfarria: metales + kalimba doblando.
+    melody = [('G4', 0.0, 0.24), ('C5', 0.25, 0.24), ('E5', 0.5, 0.24), ('G5', 0.75, 0.45),
+              ('E5', 1.25, 0.2), ('F5', 1.5, 0.12), ('A5', 1.625, 0.12), ('B5', 1.75, 0.22)]  # en segundos
+    for n, pos, dur in melody:
+        brass(music, pos, dur, note(n), vol=0.2)
+        brass(music, pos, dur, note(n) / 2, vol=0.1)
+        kalimba(music, pos, note(n) * 2, vol=0.12, length=0.8)
+    # Acorde final de Do mayor, largo, con todos.
+    end = 4 * beat
+    for n in ('C5', 'E5', 'G5', 'C6'):
+        brass(music, end, 1.3, note(n), vol=0.13)
+    pad(music, end - 0.3, 1.8, [note(n) for n in ('C4', 'E4', 'G4', 'C5')], vol=0.08)
+    sub_bass(rhythm, end, 1.2, note('C2'), vol=0.5)
+    kalimba(music, end, note('C6'), vol=0.25)
+    for k, n in enumerate(('C6', 'E6', 'G6', 'C7', 'E7', 'G7')):  # destellos que suben
+        glock(music, end + 0.05 + k * 0.06, note(n), vol=0.12)
+    # Batería: bombo, palmas, shaker, redoble de djembé hacia el final y platillo.
+    for pos in (0, 1, 2, 3, 3.5):
+        kick(rhythm, pos * beat, vol=0.75)
+    for pos in (1, 3):
+        clap(music, pos * beat, vol=0.22)
+    for k in range(16):
+        shaker(rhythm, k * beat / 4, vol=0.08 if k % 2 else 0.04)
+    for k, kind in enumerate(('tone', 'tone', 'slap', 'tone', 'slap', 'slap')):
+        djembe(rhythm, 3 * beat + k * beat / 6, kind, vol=0.26 + 0.03 * k)
+    kick(rhythm, end, vol=0.9)
+    crash(music, end, vol=0.22)
+    wet = reverb(music, wet=0.3)
+    mix = [math.tanh(1.2 * (music[i] + wet[i] + rhythm[i])) for i in range(size)]
+    fade = int(0.4 * SR)  # final suave
+    for i in range(fade):
+        mix[size - fade + i] *= 1 - i / fade
+    save(mix, out / 'win.wav', peak=0.82)
+
+
 if __name__ == '__main__':
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
@@ -405,3 +517,5 @@ if __name__ == '__main__':
     # semilla fija, y así la música aprobada no cambia al agregar efectos.
     make_lid(out)
     make_chew(out)
+    make_trash_bang(out)
+    make_win_band(out)

@@ -145,11 +145,23 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const roundToken = useRef(0); // invalida temporizadores de rondas anteriores
   const lidIsOpen = useRef(false); // evita repetir la animación de la tapa en cada movimiento del dedo
 
-  /** Abre o cierra la tapa del bote (solo si cambia de estado). */
-  const setLid = (open: boolean) => {
+  /** Abre o cierra la tapa. Al cerrar cae con fuerza; `onShut` se llama justo cuando golpea el bote. */
+  const setLid = (open: boolean, onShut?: () => void) => {
     if (lidIsOpen.current === open) return;
     lidIsOpen.current = open;
-    Animated.spring(lidOpen, { toValue: open ? 1 : 0, useNativeDriver: true, speed: open ? 22 : 16, bounciness: open ? 10 : 4 }).start();
+    if (open) {
+      Animated.spring(lidOpen, { toValue: 1, useNativeDriver: true, speed: 22, bounciness: 10 }).start();
+      return;
+    }
+    // Cae acelerando (como por gravedad), golpea y rebota un poquito.
+    Animated.timing(lidOpen, { toValue: 0, duration: 170, easing: Easing.in(Easing.quad), useNativeDriver: true }).start(({ finished }) => {
+      if (!finished) return;
+      onShut?.();
+      Animated.sequence([
+        Animated.timing(lidOpen, { toValue: 0.07, duration: 55, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(lidOpen, { toValue: 0, duration: 75, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+      ]).start();
+    });
   };
 
   // Animaciones de ambiente: Divu se balancea, la comida se mece y las nubes cruzan el cielo.
@@ -233,19 +245,16 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
       ]),
     ]).start();
     setTimeout(() => setFoodBehindTrash(true), 200); // empieza a caer: ya va dentro del bote
-    setTimeout(playTrash, 300);
-    // El golpe sacude el bote y después se cierra la tapa.
+    // Cuando la comida toca el fondo (fin de la caída, 200 + 190 ms): suena el golpe y el bote se sacude.
     setTimeout(() => {
+      playTrash();
       trashShake.setValue(0);
       Animated.sequence([
         Animated.timing(trashShake, { toValue: 1, duration: 60, useNativeDriver: true }),
         Animated.timing(trashShake, { toValue: -1, duration: 90, useNativeDriver: true }),
         Animated.timing(trashShake, { toValue: 0.6, duration: 80, useNativeDriver: true }),
         Animated.timing(trashShake, { toValue: 0, duration: 70, useNativeDriver: true }),
-      ]).start(() => {
-        setLid(false);
-        setTimeout(playLid, 120);
-      });
+      ]).start(() => setLid(false, playLid)); // el "clanc" suena justo cuando la tapa golpea
     }, 390);
   };
 
@@ -262,7 +271,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
         Animated.timing(vanish, { toValue: 0, duration: 260, easing: Easing.in(Easing.quad), useNativeDriver: true }),
       ]).start();
       // Solo mastica si la acepta (algo que sí come); la chatarra la rechaza con cara de disgusto.
-      if (food.edible) setTimeout(playChew, 200);
+      if (food.edible) setTimeout(playChew, 270); // junto con su cara de masticar (cambia a los 280 ms)
     } else {
       dropIntoTrash();
     }
