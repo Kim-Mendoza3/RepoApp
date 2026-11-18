@@ -13,11 +13,12 @@ import {
 } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 
-import { ArrowRightIcon, ConfettiIcon, HandTapIcon, HeartBreakIcon, HeartIcon, StarIcon, TimerIcon, XCircleIcon } from '@/components/icons';
+import { ArrowRightIcon, ConfettiIcon, StarIcon, TimerIcon, XCircleIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
 import { Cloud, SavannaBackground, TRASH_LID, TRASH_RATIO, TrashCanBody, TrashCanLid } from '@/features/kids/divu-scene-art';
 import { FoodArt, type FoodKind } from '@/features/kids/food-art';
 import { GameButton, GameFinish, GameTopBar, stamp } from '@/features/kids/game-chrome';
+import { Hearts, LIVES, livesLeftText, progressiveMs, projectTarget, SpeechBubble, useDragTrail } from '@/features/kids/game-kit';
 import { useBackgroundMusic, useSfx } from '@/features/kids/sound';
 import { fonts } from '@/theme/fonts';
 
@@ -39,8 +40,7 @@ const ROUNDS = 8;
 // Velocidad progresiva: la primera comida da 9 s y la última solo 5 s.
 const ROUND_MS_START = 9000;
 const ROUND_MS_END = 5000;
-const roundMs = (round: number) => Math.round(ROUND_MS_START - ((ROUND_MS_START - ROUND_MS_END) * round) / (ROUNDS - 1));
-const LIVES = 3;
+const roundMs = (round: number) => progressiveMs(round, ROUNDS, ROUND_MS_START, ROUND_MS_END);
 // El escenario ocupa TODO el alto que quede libre en la pantalla (los Android suelen ser más
 // alargados que los iPhone), con un mínimo para pantallas muy bajas y un tope para tabletas.
 const MIN_SCENE_HEIGHT = 380;
@@ -58,7 +58,6 @@ const INTRO = [
   'Si es comida chatarra, ¡va a la basura!',
 ];
 const CHEER = '¡Más comida, por favor!';
-const livesLeftText = (left: number) => (left === 0 ? '¡Ya no me quedan vidas!' : left === 1 ? '¡Uy! Me queda 1 vida' : `¡Uy! Me quedan ${left} vidas`);
 
 const divuSource = require('@/assets/images/serpiente-normal.png');
 // Caras de Divu. Las tres imágenes están alineadas (el cuerpo ocupa los mismos píxeles):
@@ -175,9 +174,8 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const trashShake = useAnimatedValue(0); // sacudida del bote al recibir la comida
   const roundToken = useRef(0); // invalida temporizadores de rondas anteriores
   const lidIsOpen = useRef(false); // evita repetir la animación de la tapa en cada movimiento del dedo
-  // Últimas posiciones del dedo (con su hora), para calcular hacia dónde y qué tan rápido
-  // iba al soltar: el gesto reporta velocidad 0 si el dedo se detuvo un instante antes.
-  const dragTrail = useRef<{ t: number; x: number; y: number }[]>([]);
+  // Últimas posiciones del dedo, para calcular hacia dónde iba al soltar (lanzamiento rápido).
+  const dragTrail = useDragTrail();
 
   /** Abre o cierra la tapa. Al cerrar cae con fuerza; `onShut` se llama justo cuando golpea el bote. */
   const setLid = (open: boolean, onShut?: () => void) => {
@@ -420,15 +418,14 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     runOnJS: true, // los callbacks corren en JavaScript (usan estado y sonidos del juego)
     disableReanimated: true,
     onActivate: () => {
-      dragTrail.current = [];
+      dragTrail.reset();
       onDraggingChange?.(true);
       playGrab();
       Animated.spring(lift, { toValue: 1.18, useNativeDriver: true, speed: 30, bounciness: 10 }).start();
     },
     onUpdate: (event) => {
       position.setValue({ x: event.translationX, y: event.translationY });
-      const now = Date.now();
-      dragTrail.current = [...dragTrail.current.filter((point) => now - point.t < 160), { t: now, x: event.translationX, y: event.translationY }];
+      dragTrail.push(event.translationX, event.translationY);
       // La tapa se abre cuando la comida se acerca al bote y se cierra si se aleja.
       const x = foodCenter.x + event.translationX;
       const y = foodCenter.y + event.translationY;
@@ -446,24 +443,9 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
         return null;
       };
       // Si la tapa ya se abrió (la comida está cerca de la boca), soltarla ahí también cuenta.
-      let target = targetAt(x, y) ?? (lidIsOpen.current ? 'trash' : null);
-      // Lanzamiento rápido: el niño suelta ANTES de llegar. Seguimos la dirección y velocidad
-      // del dedo hasta 0,25 s, en pasos pequeños (de máximo ~15 px) para no "saltarnos" el blanco.
-      // Velocidad = distancia recorrida en los últimos ~80 ms (ignorando la pausa final del dedo).
-      const trail = dragTrail.current;
-      const last = trail[trail.length - 1];
-      const moving = last ? trail.filter((point) => point.x !== last.x || point.y !== last.y) : [];
-      const from = moving.find((point) => last.t - point.t <= 120) ?? moving[moving.length - 1];
-      const velocity = from && last && last.t > from.t
-        ? { x: ((last.x - from.x) * 1000) / (last.t - from.t), y: ((last.y - from.y) * 1000) / (last.t - from.t) }
-        : { x: event.velocityX, y: event.velocityY };
-      const speed = Math.hypot(velocity.x, velocity.y);
-      if (!target && speed > 300) {
-        const step = Math.min(0.01, 15 / speed);
-        for (let seconds = step; seconds <= 0.25 && !target; seconds += step) {
-          target = targetAt(x + velocity.x * seconds, y + velocity.y * seconds);
-        }
-      }
+      let target: Target | null = targetAt(x, y) ?? (lidIsOpen.current ? 'trash' : null);
+      // Lanzamiento rápido: el niño suelta ANTES de llegar; vemos hacia dónde iba la comida.
+      target = target ?? projectTarget(x, y, dragTrail.velocity({ x: event.velocityX, y: event.velocityY }), targetAt);
       if (target) return resolve(target);
       returnFood();
     },
@@ -667,27 +649,12 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
 
         {/* Burbuja de diálogo de Divu (arriba de su cabeza). */}
         {bubbleText ? (
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.bubble, stamp(lab, 4), {
-              bottom: DIVU.bottom + DIVU.height - 4,
-              maxWidth: Math.min(sceneWidth - 32, 320),
-              opacity: bubbleIn.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 1, 1] }),
-              transform: [{ scale: bubbleIn }],
-            }]}
-          >
-            <Text style={[styles.bubbleText, { color: lab.text }]}>{bubbleText}</Text>
-            {!started ? (
-              <View style={styles.bubbleFooter}>
-                <HandTapIcon color={lab.label} size={16} weight="duotone" />
-                <Text style={[styles.bubbleHint, { color: lab.label }]}>
-                  {introStep < INTRO.length - 1 ? `Toca para continuar · ${introStep + 1}/${INTRO.length}` : 'Toca para empezar'}
-                </Text>
-              </View>
-            ) : null}
-            {/* Piquito de la burbuja, apuntando a la cabeza de Divu. */}
-            <View style={[styles.bubbleTail, { backgroundColor: lab.surface, borderColor: lab.line }]} />
-          </Animated.View>
+          <SpeechBubble
+            appear={bubbleIn}
+            hint={started ? undefined : introStep < INTRO.length - 1 ? `Toca para continuar · ${introStep + 1}/${INTRO.length}` : 'Toca para empezar'}
+            style={{ bottom: DIVU.bottom + DIVU.height - 4, right: 14, maxWidth: Math.min(sceneWidth - 32, 320) }}
+            text={bubbleText}
+          />
         ) : null}
       </View>
 
@@ -705,54 +672,11 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   );
 }
 
-/** Las 3 vidas. La que se pierde "se rompe": crece, tiembla y queda como corazón vacío. */
-function Hearts({ lives }: { lives: number }) {
-  const lab = useLabColors();
-  const first = useAnimatedValue(0);
-  const second = useAnimatedValue(0);
-  const third = useAnimatedValue(0);
-  const breaks = [first, second, third];
-  const previous = useRef(lives);
-
-  useEffect(() => {
-    if (lives < previous.current) {
-      const lost = breaks[lives];
-      lost.setValue(0);
-      Animated.timing(lost, { toValue: 1, duration: 650, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
-    }
-    if (lives === LIVES) breaks.forEach((value) => value.setValue(0));
-    previous.current = lives;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lives]);
-
-  return (
-    <View accessibilityLabel={`Vidas: ${lives} de ${LIVES}`} style={styles.hearts}>
-      {breaks.map((value, index) => {
-        const alive = index < lives;
-        const scale = value.interpolate({ inputRange: [0, 0.25, 1], outputRange: [1, 1.5, 1] });
-        const rotate = value.interpolate({ inputRange: [0, 0.3, 0.45, 0.6, 0.75, 1], outputRange: ['0deg', '-14deg', '12deg', '-8deg', '4deg', '0deg'] });
-        return (
-          <Animated.View key={index} style={{ transform: [{ scale }, { rotate }] }}>
-            {alive
-              ? <HeartIcon color="#E11D48" size={22} weight="fill" />
-              : <HeartBreakIcon color={lab.muted} size={22} weight="duotone" />}
-          </Animated.View>
-        );
-      })}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scene: { flex: 1, minHeight: MIN_SCENE_HEIGHT, maxHeight: MAX_SCENE_HEIGHT, borderRadius: 22, borderWidth: 2, overflow: 'hidden', position: 'relative' },
   // Cubre todo menos la barra superior (Salir y sonido siguen funcionando).
   introCatcher: { position: 'absolute', top: 64, left: 0, right: 0, bottom: 0, zIndex: 30 },
-  bubble: { position: 'absolute', right: 14, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, zIndex: 25 },
-  bubbleText: { fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 22 },
-  bubbleFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  bubbleHint: { fontFamily: fonts.monoBold, fontSize: 11 },
-  bubbleTail: { position: 'absolute', bottom: -9, right: 104, width: 16, height: 16, borderRightWidth: 2, borderBottomWidth: 2, transform: [{ rotate: '45deg' }] },
   cloud: { position: 'absolute', left: 0 },
   trash: { position: 'absolute', transformOrigin: 'bottom', zIndex: 5 },
   trashLid: { position: 'absolute', left: 0 },
@@ -765,7 +689,6 @@ const styles = StyleSheet.create({
   foodBehind: { zIndex: 2 },
   roundRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 },
   roundRight: { flex: 1, gap: 6 },
-  hearts: { flexDirection: 'row', justifyContent: 'flex-end', gap: 4 },
   finishDivu: { width: 72, height: 50 },
   review: { alignSelf: 'stretch', gap: 8, marginBottom: 16 },
   reviewTitle: { fontFamily: fonts.monoBold, fontSize: 11 },

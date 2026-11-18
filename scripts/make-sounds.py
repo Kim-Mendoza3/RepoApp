@@ -531,6 +531,130 @@ def make_lose(out):
     save(mix, out / 'lose.wav', peak=0.7)
 
 
+# ---------------------------------------------------------------------------
+# JUEGO "¿INSECTO O ARÁCNIDO?" (jardín)
+# ---------------------------------------------------------------------------
+
+def woodblock(buf, start, vol=0.3, freq=1150):
+    """Bloque de madera: "toc" corto y brillante."""
+    n0 = int(start * SR)
+    for i in range(int(0.08 * SR)):
+        t = i / SR
+        s = math.sin(2 * math.pi * freq * t) * math.exp(-t * 60) + 0.4 * math.sin(2 * math.pi * freq * 2.7 * t) * math.exp(-t * 90)
+        _add(buf, n0 + i, vol * s)
+
+
+def cricket_chirp(buf, start, vol=0.05):
+    """Grillo a lo lejos: tres pulsos agudos muy rápidos."""
+    for k in range(3):
+        n0 = int((start + k * 0.035) * SR)
+        for i in range(int(0.022 * SR)):
+            t = i / SR
+            e = math.sin(math.pi * t / 0.022)
+            _add(buf, n0 + i, vol * e * math.sin(2 * math.pi * 4300 * t))
+
+
+def make_music_bichos(out):
+    """Música del jardín: juguetona y curiosa (marimba, kalimba, bloque de madera y grillos), en bucle."""
+    bpm = 104
+    beat = 60 / bpm
+    bars = 8
+    loop = bars * 4 * beat
+    tail = 3.0
+    size = int((loop + tail) * SR)
+    music = [0.0] * size
+    rhythm = [0.0] * size
+    # Sol – Mim – Do – Re (I–vi–IV–V): alegre y sencilla.
+    chords = [('G2', ['G3', 'B3', 'D4'], 'major'), ('E2', ['E3', 'G3', 'B3'], 'minor'),
+              ('C2', ['C4', 'E4', 'G4'], 'major'), ('D2', ['D4', 'F#4', 'A4'], 'major')] * 2
+    kick_times = []
+    for bar, (root, pad_notes, quality) in enumerate(chords):
+        t0 = bar * 4 * beat
+        r = note(root)
+        pad(music, t0, 4 * beat + 0.4, [note(n) for n in pad_notes], vol=0.05)
+        # Bajo "pizzicato" saltarín (marimba grave).
+        for pos, mult in ((0, 1), (1, 1.5), (2, 2), (3, 1.5)):
+            marimba(rhythm, t0 + pos * beat, r * mult, vol=0.32, length=0.5)
+        # Marimba aguda: arpegio que sube y baja.
+        third = 3 if quality == 'minor' else 4
+        for k, semis in enumerate([12, 12 + third, 19, 24, 19, 12 + third, 12, 7]):
+            marimba(music, t0 + k * beat / 2 + beat / 4, r * 2 * 2 ** (semis / 12), vol=0.1)
+        for pos in (0, 2):
+            kick(rhythm, t0 + pos * beat, vol=0.5)
+            kick_times.append(t0 + pos * beat)
+        for pos in (1, 3):
+            clap(music, t0 + pos * beat, vol=0.12)
+        for pos in (0.5, 1.5, 2.5, 3.25, 3.5):
+            woodblock(rhythm, t0 + pos * beat, vol=0.16, freq=1150 if pos != 3.25 else 900)
+        for k in range(8):
+            shaker(rhythm, t0 + k * beat / 2, vol=0.05)
+    # Kalimba: melodía curiosa (pentatónica de Sol), pregunta y respuesta.
+    melody = [
+        ('D5', 0), ('G5', 0.5), ('A5', 1), ('B5', 1.5), ('A5', 2.5), ('G5', 3),
+        ('E5', 4.5), ('G5', 5), ('B5', 5.5), ('A5', 6.5),
+        ('G5', 8), ('E5', 8.5), ('D5', 9), ('E5', 10), ('G5', 11),
+        ('A5', 12.5), ('B5', 13), ('D6', 13.5), ('B5', 14.5), ('A5', 15),
+        ('B5', 16), ('D6', 16.5), ('E6', 17), ('D6', 18), ('B5', 18.5), ('A5', 19),
+        ('G5', 20.5), ('A5', 21), ('B5', 21.5), ('G5', 22.5),
+        ('E5', 24), ('G5', 24.5), ('A5', 25), ('G5', 26), ('E5', 26.5), ('D5', 27),
+        ('F#5', 28.5), ('A5', 29), ('D6', 29.5), ('A5', 30.5),
+    ]
+    for n, pos in melody:
+        kalimba(music, pos * beat, note(n), vol=0.26)
+    # Grillos de ambiente (pocos y suaves).
+    for k in range(10):
+        cricket_chirp(rhythm, random.uniform(0, loop - 0.2), vol=0.035)
+    duck = [1.0] * size
+    for kt in kick_times:
+        k0 = int(kt * SR)
+        for i in range(int(0.22 * SR)):
+            if k0 + i < size:
+                duck[k0 + i] = min(duck[k0 + i], 1 - 0.3 * math.exp(-i / SR / 0.08))
+    wet = reverb(music, wet=0.28)
+    mix = [(music[i] + wet[i]) * (0.8 + 0.2 * duck[i]) + rhythm[i] * duck[i] for i in range(size)]
+    n_loop = int(loop * SR)
+    for i in range(n_loop, size):
+        mix[i - n_loop] += mix[i]
+    save([math.tanh(1.2 * x) for x in mix[:n_loop]], out / 'music-bichos.wav', peak=0.8)
+
+
+def make_buzz(out):
+    """Tomar un bicho: zumbido corto ("bzz") que sube un poco."""
+    b = silence(0.26)
+    phase = 0.0
+    low = 0.0
+    for i in range(len(b)):
+        t = i / SR
+        f = 190 + 60 * (t / 0.26) + 14 * math.sin(2 * math.pi * 28 * t)
+        phase += f / SR
+        raw = 2 * (phase % 1.0) - 1
+        low += 0.25 * (raw - low)
+        e = min(1.0, t / 0.02) * min(1.0, (0.26 - t) / 0.08)
+        b[i] = low * e * (0.75 + 0.25 * math.sin(2 * math.pi * 55 * t))
+    save(b, out / 'buzz.wav', peak=0.55)
+
+
+def make_clink(out):
+    """El bicho cae al frasco: "tin" de vidrio (parciales agudos inarmónicos) con un golpecito."""
+    b = silence(0.6)
+    noise(b, 0, 0.012, 0.5, cutoff=0.9, adsr=(0.001, 0.005, 0.3, 0.005))
+    for freq, vol, decay in ((2093, 0.5, 0.35), (3320, 0.3, 0.25), (4870, 0.18, 0.18), (6100, 0.1, 0.12), (1180, 0.2, 0.1)):
+        tone(b, 0, decay * 1.6, freq, 'sine', vol, adsr=(0.001, decay * 0.3, 0.3, decay))
+    # Un segundo "tin" más suave: el bicho rebota en el fondo.
+    for freq, vol in ((2093, 0.18), (3320, 0.1)):
+        tone(b, 0.09, 0.3, freq * 1.01, 'sine', vol, adsr=(0.001, 0.06, 0.25, 0.2))
+    save(b, out / 'clink.wav', peak=0.6)
+
+
+def make_jar_lid(out):
+    """Tapa del frasco al cerrarse: "toc" metálico corto y agudo."""
+    b = silence(0.25)
+    noise(b, 0, 0.015, 0.5, cutoff=0.7, adsr=(0.001, 0.006, 0.3, 0.006))
+    for freq, vol, decay in ((880, 0.45, 0.08), (1960, 0.25, 0.06), (3150, 0.12, 0.04)):
+        tone(b, 0, decay * 1.8, freq, 'sine', vol, adsr=(0.001, decay * 0.3, 0.25, decay))
+    save(b, out / 'jar-lid.wav', peak=0.6)
+
+
 if __name__ == '__main__':
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
@@ -543,3 +667,7 @@ if __name__ == '__main__':
     make_trash_bang(out)
     make_win_band(out)
     make_lose(out)
+    make_music_bichos(out)
+    make_buzz(out)
+    make_clink(out)
+    make_jar_lid(out)
