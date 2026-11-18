@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 
-import { ArrowRightIcon, ConfettiIcon, HandTapIcon, StarIcon, TimerIcon, XCircleIcon } from '@/components/icons';
+import { ArrowRightIcon, ConfettiIcon, HandTapIcon, HeartBreakIcon, HeartIcon, StarIcon, TimerIcon, XCircleIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
 import { Cloud, SavannaBackground, TRASH_LID, TRASH_RATIO, TrashCanBody, TrashCanLid } from '@/features/kids/divu-scene-art';
 import { FoodArt, type FoodKind } from '@/features/kids/food-art';
@@ -36,7 +36,11 @@ const foods: Food[] = [
 ];
 
 const ROUNDS = 8;
-const ROUND_MS = 9000;
+// Velocidad progresiva: la primera comida da 9 s y la última solo 5 s.
+const ROUND_MS_START = 9000;
+const ROUND_MS_END = 5000;
+const roundMs = (round: number) => Math.round(ROUND_MS_START - ((ROUND_MS_START - ROUND_MS_END) * round) / (ROUNDS - 1));
+const LIVES = 3;
 // El escenario ocupa TODO el alto que quede libre en la pantalla (los Android suelen ser más
 // alargados que los iPhone), con un mínimo para pantallas muy bajas y un tope para tabletas.
 const MIN_SCENE_HEIGHT = 380;
@@ -54,6 +58,7 @@ const INTRO = [
   'Si es comida chatarra, ¡va a la basura!',
 ];
 const CHEER = '¡Más comida, por favor!';
+const livesLeftText = (left: number) => (left === 0 ? '¡Ya no me quedan vidas!' : left === 1 ? '¡Uy! Me queda 1 vida' : `¡Uy! Me quedan ${left} vidas`);
 
 const divuSource = require('@/assets/images/serpiente-normal.png');
 // Caras de Divu. Las tres imágenes están alineadas (el cuerpo ocupa los mismos píxeles):
@@ -75,6 +80,7 @@ const sounds = {
   wrong: require('@/assets/sounds/wrong.wav'),
   timeout: require('@/assets/sounds/timeout.wav'),
   win: require('@/assets/sounds/win.wav'),
+  lose: require('@/assets/sounds/lose.wav'),
 };
 
 /** 8 comidas al azar: las 6 una vez y 2 repetidas, barajadas (Fisher-Yates). */
@@ -108,11 +114,20 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   // Burbuja de Divu: primero las instrucciones (introStep), luego un ánimo breve al reiniciar.
   const [introStep, setIntroStep] = useState(0);
   const started = introStep >= INTRO.length;
-  const [cheer, setCheer] = useState(false);
+  // Mensaje breve de Divu durante el juego (ánimo al reiniciar, vidas que quedan); se desvanece solo.
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Vidas: se pierde una al equivocarse o si se acaba el tiempo. El ref evita leer un valor
+  // viejo desde el temporizador de la ronda.
+  const [lives, setLives] = useState(LIVES);
+  const livesRef = useRef(LIVES);
+  const [gameOver, setGameOver] = useState(false);
+  // Comidas en las que se equivocó (sin repetir), para el repaso del final.
+  const [mistakes, setMistakes] = useState<Food[]>([]);
   // Al caer al bote, la comida pasa DETRÁS del frente del bote para que se vea entrar por la boca.
   const [foodBehindTrash, setFoodBehindTrash] = useState(false);
   const sceneHeight = scene.height || 440;
-  const finished = round >= ROUNDS;
+  const finished = round >= ROUNDS || gameOver;
   const food = deck[Math.min(round, ROUNDS - 1)];
 
   // Sonido
@@ -126,6 +141,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const playWrong = useSfx(sounds.wrong, 0.7);
   const playTimeout = useSfx(sounds.timeout, 0.7);
   const playWin = useSfx(sounds.win, 0.8);
+  const playLose = useSfx(sounds.lose, 0.8);
 
   // Valores animados
   const position = useAnimatedValueXY({ x: 0, y: 0 });
@@ -200,6 +216,27 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     return () => loops.forEach((loop) => loop.stop());
   }, [bob, cloudA, cloudB, sway]);
 
+  /** Divu dice algo breve en su burbuja, que se desvanece sola sin detener el juego. */
+  const say = (text: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(text);
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(bubbleIn, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => setToast(null));
+    }, 1800);
+  };
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  /** Se equivocó o se acabó el tiempo: pierde una vida y guardamos la comida para el repaso. */
+  const loseLife = (lost: Food | undefined) => {
+    const left = Math.max(0, livesRef.current - 1);
+    livesRef.current = left;
+    setLives(left);
+    if (lost) setMistakes((list) => (list.some((item) => item.kind === lost.kind) ? list : [...list, lost]));
+    say(livesLeftText(left));
+  };
+
   // Inicio de cada ronda: la comida cae rebotando y arranca el reloj.
   useEffect(() => {
     if (finished || !started) return;
@@ -218,12 +255,13 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     Animated.spring(drop, { toValue: 1, useNativeDriver: true, speed: 9, bounciness: 12, restDisplacementThreshold: 0.02, restSpeedThreshold: 0.2 }).start(() => {
       if (roundToken.current !== token) return;
       setPhase('play');
-      Animated.timing(timer, { toValue: 0, duration: ROUND_MS, easing: Easing.linear, useNativeDriver: true }).start(({ finished: done }) => {
+      Animated.timing(timer, { toValue: 0, duration: roundMs(round), easing: Easing.linear, useNativeDriver: true }).start(({ finished: done }) => {
         if (!done || roundToken.current !== token) return;
         roundToken.current += 1;
         setResult({ outcome: 'timeout' });
         setPhase('result');
         playTimeout();
+        loseLife(food);
       });
     });
     // Solo debe correr al cambiar de ronda, reiniciar la partida o terminar la introducción.
@@ -234,7 +272,8 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   useEffect(() => {
     bubbleIn.setValue(0.6);
     Animated.spring(bubbleIn, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 12 }).start();
-  }, [bubbleIn, introStep, cheer]);
+  }, [bubbleIn, introStep, toast]);
+
 
   /** Toque en cualquier parte durante la introducción: siguiente mensaje (o empieza el juego). */
   const advanceIntro = () => {
@@ -251,7 +290,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
 
   // Música final al terminar la partida.
   useEffect(() => {
-    if (finished) playWin();
+    if (finished) (gameOver ? playLose : playWin)();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
 
@@ -321,6 +360,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
         ]).start();
       } else {
         playWrong();
+        loseLife(food);
         shake.setValue(0);
         Animated.sequence([
           Animated.timing(shake, { toValue: 1, duration: 70, useNativeDriver: true }),
@@ -340,6 +380,11 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     showFace('normal');
     setFoodBehindTrash(false);
     setResult(null);
+    // Sin vidas: termina la partida antes (Divu se quedó con hambre).
+    if (livesRef.current === 0) {
+      setGameOver(true);
+      return;
+    }
     setPhase('drop');
     setRound((value) => value + 1);
   };
@@ -349,14 +394,15 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     setFoodBehindTrash(false);
     setScore(0);
     setResult(null);
+    livesRef.current = LIVES;
+    setLives(LIVES);
+    setGameOver(false);
+    setMistakes([]);
     setPhase('drop');
     setRound(0);
     setDeck(makeDeck());
     // Divu pide más comida en su burbuja, que se desvanece sola (sin detener el juego).
-    setCheer(true);
-    setTimeout(() => {
-      Animated.timing(bubbleIn, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => setCheer(false));
-    }, 1800);
+    say(CHEER);
   };
 
   /** La comida regresa a su lugar (se soltó lejos o el gesto se canceló). */
@@ -424,14 +470,46 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   });
 
   if (finished) {
+    // Repaso: lo que aprendimos de cada comida en la que se equivocó.
+    const review = mistakes.length > 0 ? (
+      <View style={styles.review}>
+        <Text style={[styles.reviewTitle, { color: lab.label }]}>{gameOver ? '// repasemos' : '// para la próxima'}</Text>
+        {mistakes.map((item) => (
+          <View key={item.kind} style={[styles.reviewItem, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
+            <FoodArt kind={item.kind} size={44} />
+            <View style={styles.reviewCopy}>
+              <Text style={[styles.reviewName, { color: lab.text }]}>{`${item.name}: ${item.edible ? 'sí es comida para Divu' : 'va a la basura'}`}</Text>
+              <Text style={[styles.reviewFact, { color: lab.muted }]}>{item.fact}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    ) : null;
     return (
       <View>
         <GameTopBar score={score} total={ROUNDS} />
-        <GameFinish
-          title={score === ROUNDS ? '¡Divu está feliz y sano!' : '¡Merienda terminada!'}
-          text={`Acertaste ${score} de ${ROUNDS}. Recuerda: las serpientes solo comen animales, como ratones, huevos y aves pequeñas.`}
-          onRestart={restart}
-        />
+        {gameOver ? (
+          // Sin vidas: sin fuegos artificiales (son el premio de ganar), con repaso y ánimo para reintentar.
+          <GameFinish
+            actionLabel="¡Intentarlo otra vez!"
+            celebrate={false}
+            icon={<Image contentFit="contain" source={faces[2].source} style={styles.finishDivu} />}
+            iconColor={lab.pink}
+            onRestart={restart}
+            text={`Te quedaste sin vidas en la comida ${round + 1} de ${ROUNDS}, ¡pero aprendiste algo nuevo!`}
+            title="¡Ups! Divu sigue con hambre"
+          >
+            {review}
+          </GameFinish>
+        ) : (
+          <GameFinish
+            onRestart={restart}
+            text={`Acertaste ${score} de ${ROUNDS}. Recuerda: las serpientes solo comen animales, como ratones, huevos y aves pequeñas.`}
+            title={score === ROUNDS ? '¡Divu está feliz y sano!' : '¡Merienda terminada!'}
+          >
+            {review}
+          </GameFinish>
+        )}
       </View>
     );
   }
@@ -459,7 +537,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
       ? { title: result?.target === 'divu' ? '¡Uy! Eso no es comida para Divu' : '¡Divu sí podía comer eso!', color: lab.pink, Icon: XCircleIcon }
       : { title: '¡Se acabó el tiempo!', color: lab.amber, Icon: TimerIcon };
 
-  const bubbleText = !started ? INTRO[introStep] : cheer ? CHEER : null;
+  const bubbleText = !started ? INTRO[introStep] : toast;
 
   return (
     <View style={styles.root}>
@@ -471,8 +549,11 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
           <Text style={[styles.roundLabel, { color: lab.label }]}>{`// comida ${round + 1} de ${ROUNDS}`}</Text>
           <Text style={[styles.foodName, { color: lab.text }]}>{started ? food?.name : '¡A comer!'}</Text>
         </View>
-        <View style={[styles.timerTrack, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
-          <Animated.View style={[styles.timerFill, { backgroundColor: lab.cyan, transform: [{ scaleX: timer }] }]} />
+        <View style={styles.roundRight}>
+          <Hearts lives={lives} />
+          <View style={[styles.timerTrack, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
+            <Animated.View style={[styles.timerFill, { backgroundColor: lab.cyan, transform: [{ scaleX: timer }] }]} />
+          </View>
         </View>
       </View>
 
@@ -580,7 +661,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
                 <Text style={[styles.feedbackText, { color: lab.onBright }]}>{`${food.name}: ${food.fact}`}</Text>
               </View>
             </View>
-            <GameButton icon={<ArrowRightIcon color={lab.onBright} size={18} weight="bold" />} label={round + 1 < ROUNDS ? 'Siguiente comida' : 'Ver resultado'} onPress={next} />
+            <GameButton icon={<ArrowRightIcon color={lab.onBright} size={18} weight="bold" />} label={round + 1 < ROUNDS && lives > 0 ? 'Siguiente comida' : 'Ver resultado'} onPress={next} />
           </Animated.View>
         ) : null}
 
@@ -624,6 +705,44 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   );
 }
 
+/** Las 3 vidas. La que se pierde "se rompe": crece, tiembla y queda como corazón vacío. */
+function Hearts({ lives }: { lives: number }) {
+  const lab = useLabColors();
+  const first = useAnimatedValue(0);
+  const second = useAnimatedValue(0);
+  const third = useAnimatedValue(0);
+  const breaks = [first, second, third];
+  const previous = useRef(lives);
+
+  useEffect(() => {
+    if (lives < previous.current) {
+      const lost = breaks[lives];
+      lost.setValue(0);
+      Animated.timing(lost, { toValue: 1, duration: 650, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    }
+    if (lives === LIVES) breaks.forEach((value) => value.setValue(0));
+    previous.current = lives;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lives]);
+
+  return (
+    <View accessibilityLabel={`Vidas: ${lives} de ${LIVES}`} style={styles.hearts}>
+      {breaks.map((value, index) => {
+        const alive = index < lives;
+        const scale = value.interpolate({ inputRange: [0, 0.25, 1], outputRange: [1, 1.5, 1] });
+        const rotate = value.interpolate({ inputRange: [0, 0.3, 0.45, 0.6, 0.75, 1], outputRange: ['0deg', '-14deg', '12deg', '-8deg', '4deg', '0deg'] });
+        return (
+          <Animated.View key={index} style={{ transform: [{ scale }, { rotate }] }}>
+            {alive
+              ? <HeartIcon color="#E11D48" size={22} weight="fill" />
+              : <HeartBreakIcon color={lab.muted} size={22} weight="duotone" />}
+          </Animated.View>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scene: { flex: 1, minHeight: MIN_SCENE_HEIGHT, maxHeight: MAX_SCENE_HEIGHT, borderRadius: 22, borderWidth: 2, overflow: 'hidden', position: 'relative' },
@@ -645,6 +764,15 @@ const styles = StyleSheet.create({
   food: { position: 'absolute', top: FOOD_TOP, width: FOOD_SIZE, height: FOOD_SIZE, zIndex: 10 },
   foodBehind: { zIndex: 2 },
   roundRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 12 },
+  roundRight: { flex: 1, gap: 6 },
+  hearts: { flexDirection: 'row', justifyContent: 'flex-end', gap: 4 },
+  finishDivu: { width: 72, height: 50 },
+  review: { alignSelf: 'stretch', gap: 8, marginBottom: 16 },
+  reviewTitle: { fontFamily: fonts.monoBold, fontSize: 11 },
+  reviewItem: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 2, borderRadius: 14, padding: 10 },
+  reviewCopy: { flex: 1 },
+  reviewName: { fontFamily: fonts.bodyBold, fontSize: 13, lineHeight: 18 },
+  reviewFact: { fontFamily: fonts.body, fontSize: 12, lineHeight: 17, marginTop: 2 },
   resultOverlay: { position: 'absolute', top: 14, left: 12, right: 12, zIndex: 20 },
   roundCopy: { flexShrink: 1 },
   roundLabel: { fontFamily: fonts.monoBold, fontSize: 11 },

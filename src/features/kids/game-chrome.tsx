@@ -105,24 +105,40 @@ export function MissionCard({ label, title, text, art }: { label: string; title:
   );
 }
 
-/** Pantalla final con el resultado, la celebración y la opción de volver a jugar. */
-export function GameFinish({ title, text, onRestart }: { title: string; text: string; onRestart: () => void }) {
+type GameFinishProps = {
+  title: string;
+  text: string;
+  onRestart: () => void;
+  /** Fuegos artificiales y confeti (solo al ganar: así la celebración se siente como premio). */
+  celebrate?: boolean;
+  /** Ilustración en lugar del trofeo. */
+  icon?: ReactNode;
+  /** Color del recuadro de la ilustración (lima por defecto). */
+  iconColor?: string;
+  actionLabel?: string;
+  /** Contenido extra entre el texto y el botón (por ejemplo, el repaso de errores). */
+  children?: ReactNode;
+};
+
+/** Pantalla final con el resultado, la celebración (opcional) y la opción de volver a jugar. */
+export function GameFinish({ title, text, onRestart, celebrate: withCelebration = true, icon, iconColor, actionLabel = 'Jugar otra vez', children }: GameFinishProps) {
   const lab = useLabColors();
   const celebrate = useContext(CelebrationContext);
   // Al aparecer la pantalla final: ¡fuegos artificiales y confeti!
   useEffect(() => {
-    celebrate();
-  }, [celebrate]);
+    if (withCelebration) celebrate();
+  }, [celebrate, withCelebration]);
   return (
     <View style={[styles.finish, stamp(lab, 6)]}>
-      <View style={[styles.trophy, stamp(lab, 4, lab.lime)]}>
-        <TrophyIcon color={lab.onBright} size={40} weight="duotone" />
+      <View style={[styles.trophy, stamp(lab, 4, iconColor ?? lab.lime)]}>
+        {icon ?? <TrophyIcon color={lab.onBright} size={40} weight="duotone" />}
       </View>
       <Text style={[styles.finishTitle, { color: lab.text }]}>{title}</Text>
       <Text style={[styles.missionText, styles.center, { color: lab.muted }]}>{text}</Text>
+      {children}
       <Pressable accessibilityRole="button" onPress={onRestart} style={({ pressed }) => [styles.action, stamp(lab, 4, lab.cyan), pressed && pressedStyle]}>
         <ArrowClockwiseIcon color={lab.onBright} size={18} weight="bold" />
-        <Text style={[styles.actionText, { color: lab.onBright }]}>Jugar otra vez</Text>
+        <Text style={[styles.actionText, { color: lab.onBright }]}>{actionLabel}</Text>
       </Pressable>
     </View>
   );

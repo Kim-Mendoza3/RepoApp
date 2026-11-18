@@ -508,6 +508,29 @@ def make_win_band(out):
     save(mix, out / 'win.wav', peak=0.82)
 
 
+def make_lose(out):
+    """Fin sin vidas: frase corta y tierna que baja ("ay, ¡otra vez!"), sin sonar a regaño."""
+    size = int(2.6 * SR)
+    music = [0.0] * size
+    rhythm = [0.0] * size
+    # Marimba que baja con calma (La menor suave) y kalimba que "pregunta" al final: invita a reintentar.
+    for n, t in (('E5', 0.0), ('D5', 0.22), ('C5', 0.44), ('A4', 0.7)):
+        marimba(music, t, note(n), vol=0.3)
+        kalimba(music, t, note(n) * 2, vol=0.08, length=0.8)
+    pad(music, 0.6, 1.9, [note(n) for n in ('A3', 'C4', 'E4', 'G4')], vol=0.07)
+    sub_bass(rhythm, 0.7, 0.9, note('A2'), vol=0.35)
+    kalimba(music, 1.35, note('C6'), vol=0.2)
+    kalimba(music, 1.6, note('E6'), vol=0.18)
+    for t in (0.0, 0.44):
+        shaker(rhythm, t, vol=0.05)
+    wet = reverb(music, wet=0.3)
+    mix = [math.tanh(1.1 * (music[i] + wet[i] + rhythm[i])) for i in range(size)]
+    fade = int(0.5 * SR)
+    for i in range(fade):
+        mix[size - fade + i] *= 1 - i / fade
+    save(mix, out / 'lose.wav', peak=0.7)
+
+
 if __name__ == '__main__':
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
@@ -519,3 +542,4 @@ if __name__ == '__main__':
     make_chew(out)
     make_trash_bang(out)
     make_win_band(out)
+    make_lose(out)

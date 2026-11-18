@@ -18,6 +18,7 @@ export { GoogleLogoIcon } from 'phosphor-react-native/src/icons/GoogleLogo';
 export { GraduationCapIcon } from 'phosphor-react-native/src/icons/GraduationCap';
 export { HandSwipeRightIcon } from 'phosphor-react-native/src/icons/HandSwipeRight';
 export { HandTapIcon } from 'phosphor-react-native/src/icons/HandTap';
+export { HeartBreakIcon } from 'phosphor-react-native/src/icons/HeartBreak';
 export { HeartIcon } from 'phosphor-react-native/src/icons/Heart';
 export { HouseIcon } from 'phosphor-react-native/src/icons/House';
 export { ImageSquareIcon } from 'phosphor-react-native/src/icons/ImageSquare';
