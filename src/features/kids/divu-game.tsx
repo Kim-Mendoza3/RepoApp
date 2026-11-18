@@ -48,10 +48,10 @@ const TRASH = { size: 86, left: 14, bottom: 22 };
 
 // Lo que dice Divu en su burbuja al empezar (se avanza tocando en cualquier parte).
 const INTRO = [
-  '¡Hola! Soy Divu, una pitón bola de la sabana africana… ¡y tengo mucha hambre!',
-  'Arrastra con tu dedo hasta mí la comida que puede comer una serpiente.',
-  'Si no es comida para serpiente, ¡llévala al bote de basura!',
-  'Hazlo antes de que se acabe el tiempo. ¿Me ayudas?',
+  '¡Hola! Soy Divu, una pitón bola.',
+  '¡Tengo mucha hambre!',
+  'Arrastra con tu dedo la comida que puede comer una serpiente.',
+  'Si es comida chatarra, ¡va a la basura!',
 ];
 const CHEER = '¡Más comida, por favor!';
 
