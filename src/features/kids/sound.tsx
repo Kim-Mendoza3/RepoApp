@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setAudioModeAsync, useAudioPlayer, type AudioSource } from 'expo-audio';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createAudioPlayer, setAudioModeAsync, useAudioPlayer, type AudioPlayer, type AudioSource } from 'expo-audio';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
 
 // SONIDO DE LOS MINIJUEGOS
@@ -46,26 +46,58 @@ export function useSoundSettings() {
   return context;
 }
 
-/** Devuelve una función que reproduce un efecto corto desde el inicio (si el sonido está activo). */
+/** Cuántas copias de cada efecto: si una todavía suena, la otra está lista (nunca se corta ni se omite). */
+const SFX_COPIES = 2;
+
+/**
+ * Devuelve una función que reproduce un efecto corto (si el sonido está activo), sin importar
+ * qué tan rápido juegue el niño:
+ * - Cada efecto tiene 2 reproductores. Si uno sigue sonando, se usa el otro.
+ * - Cada reproductor se REBOBINA en cuanto termina, para estar listo antes de la siguiente vez.
+ *   Antes se rebobinaba justo al tocar: "rebobinar" tarda un instante y, en iPhone, play() podía
+ *   arrancar antes de que terminara, desde el final del audio, y el efecto no se oía.
+ */
 export function useSfx(source: AudioSource, volume = 0.8) {
-  const player = useAudioPlayer(source);
   const { muted } = useSoundSettings();
+  const pool = useRef<AudioPlayer[]>([]);
 
   useEffect(() => {
-    // expo-audio se configura asignando propiedades al reproductor (así lo indica su documentación).
-    // eslint-disable-next-line react-hooks/immutability
-    player.volume = volume;
-  }, [player, volume]);
+    const players = Array.from({ length: SFX_COPIES }, () => createAudioPlayer(source));
+    const subscriptions = players.map((player) => {
+      player.volume = volume;
+      return player.addListener('playbackStatusUpdate', (status) => {
+        if (!status.didJustFinish) return;
+        player.pause();
+        player.seekTo(0).catch(() => {});
+      });
+    });
+    pool.current = players;
+    return () => {
+      subscriptions.forEach((subscription) => subscription.remove());
+      players.forEach((player) => player.remove());
+      pool.current = [];
+    };
+  }, [source, volume]);
 
   return useCallback(() => {
     if (muted) return;
+    const players = pool.current;
+    if (players.length === 0) return;
     try {
-      player.seekTo(0);
-      player.play();
+      // 1) Uno libre y ya rebobinado: suena al instante.
+      const ready = players.find((player) => !player.playing && player.currentTime < 0.02);
+      if (ready) {
+        ready.play();
+        return;
+      }
+      // 2) Si no, uno libre (o el que lleva más tiempo sonando): se rebobina y, AL TERMINAR, suena.
+      const target = players.find((player) => !player.playing)
+        ?? players.reduce((a, b) => (a.currentTime >= b.currentTime ? a : b));
+      target.seekTo(0).then(() => target.play(), () => target.play());
     } catch {
       // Un efecto que falla nunca debe interrumpir el juego.
     }
-  }, [muted, player]);
+  }, [muted]);
 }
 
 /**

@@ -141,7 +141,8 @@ export function GameButton({ label, onPress, icon }: { label: string; onPress: (
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { padding: 22, paddingBottom: 40, maxWidth: 800, width: '100%', alignSelf: 'center' },
+  // flexGrow: el contenido puede estirarse al alto de la pantalla (el escenario de Divu lo aprovecha).
+  content: { flexGrow: 1, padding: 22, paddingBottom: 28, maxWidth: 800, width: '100%', alignSelf: 'center' },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 44, borderRadius: 14, paddingHorizontal: 14 },
   backText: { fontFamily: fonts.bodyBold, fontSize: 14 },

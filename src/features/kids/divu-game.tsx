@@ -13,13 +13,12 @@ import {
 } from 'react-native';
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 
-import { ArrowRightIcon, ConfettiIcon, HandSwipeRightIcon, HeartIcon, StarIcon, TimerIcon, TrashIcon, XCircleIcon } from '@/components/icons';
+import { ArrowRightIcon, ConfettiIcon, HandTapIcon, StarIcon, TimerIcon, XCircleIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
 import { Cloud, SavannaBackground, TRASH_LID, TRASH_RATIO, TrashCanBody, TrashCanLid } from '@/features/kids/divu-scene-art';
 import { FoodArt, type FoodKind } from '@/features/kids/food-art';
-import { GameButton, GameFinish, GameTopBar, MissionCard, stamp } from '@/features/kids/game-chrome';
+import { GameButton, GameFinish, GameTopBar, stamp } from '@/features/kids/game-chrome';
 import { useBackgroundMusic, useSfx } from '@/features/kids/sound';
-import { pressedStyle } from '@/theme/common-styles';
 import { fonts } from '@/theme/fonts';
 
 type Food = { kind: FoodKind; name: string; edible: boolean; fact: string };
@@ -38,13 +37,23 @@ const foods: Food[] = [
 
 const ROUNDS = 8;
 const ROUND_MS = 9000;
-// Escenario vertical (3:4) para aprovechar la pantalla del teléfono; con tope para tabletas.
-const SCENE_RATIO = 4 / 3;
-const MAX_SCENE_HEIGHT = 560;
+// El escenario ocupa TODO el alto que quede libre en la pantalla (los Android suelen ser más
+// alargados que los iPhone), con un mínimo para pantallas muy bajas y un tope para tabletas.
+const MIN_SCENE_HEIGHT = 380;
+const MAX_SCENE_HEIGHT = 700;
 const FOOD_SIZE = 96;
 const FOOD_TOP = 28;
 const DIVU = { width: 184, height: 130, right: 0, bottom: 40 };
 const TRASH = { size: 86, left: 14, bottom: 22 };
+
+// Lo que dice Divu en su burbuja al empezar (se avanza tocando en cualquier parte).
+const INTRO = [
+  '¡Hola! Soy Divu, una pitón bola de la sabana africana… ¡y tengo mucha hambre!',
+  'Arrastra con tu dedo hasta mí la comida que puede comer una serpiente.',
+  'Si no es comida para serpiente, ¡llévala al bote de basura!',
+  'Hazlo antes de que se acabe el tiempo. ¿Me ayudas?',
+];
+const CHEER = '¡Más comida, por favor!';
 
 const divuSource = require('@/assets/images/serpiente-normal.png');
 // Caras de Divu. Las tres imágenes están alineadas (el cuerpo ocupa los mismos píxeles):
@@ -94,10 +103,15 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const [score, setScore] = useState(0);
   const [phase, setPhase] = useState<'drop' | 'play' | 'result'>('drop');
   const [result, setResult] = useState<Result | null>(null);
-  const [sceneWidth, setSceneWidth] = useState(0);
+  const [scene, setScene] = useState({ width: 0, height: 0 });
+  const sceneWidth = scene.width;
+  // Burbuja de Divu: primero las instrucciones (introStep), luego un ánimo breve al reiniciar.
+  const [introStep, setIntroStep] = useState(0);
+  const started = introStep >= INTRO.length;
+  const [cheer, setCheer] = useState(false);
   // Al caer al bote, la comida pasa DETRÁS del frente del bote para que se vea entrar por la boca.
   const [foodBehindTrash, setFoodBehindTrash] = useState(false);
-  const sceneHeight = sceneWidth ? Math.min(sceneWidth * SCENE_RATIO, MAX_SCENE_HEIGHT) : 440;
+  const sceneHeight = scene.height || 440;
   const finished = round >= ROUNDS;
   const food = deck[Math.min(round, ROUNDS - 1)];
 
@@ -140,10 +154,14 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
   const cloudA = useAnimatedValue(0);
   const cloudB = useAnimatedValue(0);
   const resultIn = useAnimatedValue(0); // la tarjeta de resultado entra con un rebote
+  const bubbleIn = useAnimatedValue(1); // la burbuja de Divu "salta" al cambiar de texto
   const lidOpen = useAnimatedValue(0); // tapa del bote: 0 cerrada, 1 abierta
   const trashShake = useAnimatedValue(0); // sacudida del bote al recibir la comida
   const roundToken = useRef(0); // invalida temporizadores de rondas anteriores
   const lidIsOpen = useRef(false); // evita repetir la animación de la tapa en cada movimiento del dedo
+  // Últimas posiciones del dedo (con su hora), para calcular hacia dónde y qué tan rápido
+  // iba al soltar: el gesto reporta velocidad 0 si el dedo se detuvo un instante antes.
+  const dragTrail = useRef<{ t: number; x: number; y: number }[]>([]);
 
   /** Abre o cierra la tapa. Al cerrar cae con fuerza; `onShut` se llama justo cuando golpea el bote. */
   const setLid = (open: boolean, onShut?: () => void) => {
@@ -184,7 +202,7 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
 
   // Inicio de cada ronda: la comida cae rebotando y arranca el reloj.
   useEffect(() => {
-    if (finished) return;
+    if (finished || !started) return;
     const token = roundToken.current + 1;
     roundToken.current = token;
     position.setValue({ x: 0, y: 0 });
@@ -208,9 +226,21 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
         playTimeout();
       });
     });
-    // Solo debe correr al cambiar de ronda o reiniciar la partida.
+    // Solo debe correr al cambiar de ronda, reiniciar la partida o terminar la introducción.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [round, deck]);
+  }, [round, deck, started]);
+
+  // Cada texto nuevo de la burbuja entra con un pequeño salto.
+  useEffect(() => {
+    bubbleIn.setValue(0.6);
+    Animated.spring(bubbleIn, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 12 }).start();
+  }, [bubbleIn, introStep, cheer]);
+
+  /** Toque en cualquier parte durante la introducción: siguiente mensaje (o empieza el juego). */
+  const advanceIntro = () => {
+    if (introStep < INTRO.length - 1) return setIntroStep((step) => step + 1);
+    Animated.timing(bubbleIn, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => setIntroStep(INTRO.length));
+  };
 
   // La tarjeta de resultado aparece con un pequeño rebote.
   useEffect(() => {
@@ -322,6 +352,11 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     setPhase('drop');
     setRound(0);
     setDeck(makeDeck());
+    // Divu pide más comida en su burbuja, que se desvanece sola (sin detener el juego).
+    setCheer(true);
+    setTimeout(() => {
+      Animated.timing(bubbleIn, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => setCheer(false));
+    }, 1800);
   };
 
   /** La comida regresa a su lugar (se soltó lejos o el gesto se canceló). */
@@ -339,12 +374,15 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
     runOnJS: true, // los callbacks corren en JavaScript (usan estado y sonidos del juego)
     disableReanimated: true,
     onActivate: () => {
+      dragTrail.current = [];
       onDraggingChange?.(true);
       playGrab();
       Animated.spring(lift, { toValue: 1.18, useNativeDriver: true, speed: 30, bounciness: 10 }).start();
     },
     onUpdate: (event) => {
       position.setValue({ x: event.translationX, y: event.translationY });
+      const now = Date.now();
+      dragTrail.current = [...dragTrail.current.filter((point) => now - point.t < 160), { t: now, x: event.translationX, y: event.translationY }];
       // La tapa se abre cuando la comida se acerca al bote y se cierra si se aleja.
       const x = foodCenter.x + event.translationX;
       const y = foodCenter.y + event.translationY;
@@ -356,9 +394,31 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
       if (event.canceled) return returnFood();
       const x = foodCenter.x + event.translationX;
       const y = foodCenter.y + event.translationY;
-      if (Math.hypot(x - divuCenter.x, y - divuCenter.y) < 88) return resolve('divu');
+      const targetAt = (px: number, py: number): Target | null => {
+        if (Math.hypot(px - divuCenter.x, py - divuCenter.y) < 92) return 'divu';
+        if (Math.hypot(px - trashCenter.x, py - trashCenter.y) < 84) return 'trash';
+        return null;
+      };
       // Si la tapa ya se abrió (la comida está cerca de la boca), soltarla ahí también cuenta.
-      if (lidIsOpen.current || Math.hypot(x - trashCenter.x, y - trashCenter.y) < 80) return resolve('trash');
+      let target = targetAt(x, y) ?? (lidIsOpen.current ? 'trash' : null);
+      // Lanzamiento rápido: el niño suelta ANTES de llegar. Seguimos la dirección y velocidad
+      // del dedo hasta 0,25 s, en pasos pequeños (de máximo ~15 px) para no "saltarnos" el blanco.
+      // Velocidad = distancia recorrida en los últimos ~80 ms (ignorando la pausa final del dedo).
+      const trail = dragTrail.current;
+      const last = trail[trail.length - 1];
+      const moving = last ? trail.filter((point) => point.x !== last.x || point.y !== last.y) : [];
+      const from = moving.find((point) => last.t - point.t <= 120) ?? moving[moving.length - 1];
+      const velocity = from && last && last.t > from.t
+        ? { x: ((last.x - from.x) * 1000) / (last.t - from.t), y: ((last.y - from.y) * 1000) / (last.t - from.t) }
+        : { x: event.velocityX, y: event.velocityY };
+      const speed = Math.hypot(velocity.x, velocity.y);
+      if (!target && speed > 300) {
+        const step = Math.min(0.01, 15 / speed);
+        for (let seconds = step; seconds <= 0.25 && !target; seconds += step) {
+          target = targetAt(x + velocity.x * seconds, y + velocity.y * seconds);
+        }
+      }
+      if (target) return resolve(target);
       returnFood();
     },
   });
@@ -399,21 +459,17 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
       ? { title: result?.target === 'divu' ? '¡Uy! Eso no es comida para Divu' : '¡Divu sí podía comer eso!', color: lab.pink, Icon: XCircleIcon }
       : { title: '¡Se acabó el tiempo!', color: lab.amber, Icon: TimerIcon };
 
+  const bubbleText = !started ? INTRO[introStep] : cheer ? CHEER : null;
+
   return (
-    <View>
+    <View style={styles.root}>
       <GameTopBar score={score} total={ROUNDS} />
-      <MissionCard
-        label="// misión 01 · alimentar"
-        title="¿Qué puede comer Divu?"
-        text="Divu es una pitón bola y vive en la sabana africana. Llévale lo que come una serpiente; lo demás, ¡al bote!"
-        art={<Image contentFit="contain" source={divuSource} style={styles.missionSnake} />}
-      />
 
       {/* Ronda y tiempo (arriba del escenario para verlos mientras se juega) */}
       <View style={styles.roundRow}>
         <View style={styles.roundCopy}>
           <Text style={[styles.roundLabel, { color: lab.label }]}>{`// comida ${round + 1} de ${ROUNDS}`}</Text>
-          <Text style={[styles.foodName, { color: lab.text }]}>{food?.name}</Text>
+          <Text style={[styles.foodName, { color: lab.text }]}>{started ? food?.name : '¡A comer!'}</Text>
         </View>
         <View style={[styles.timerTrack, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
           <Animated.View style={[styles.timerFill, { backgroundColor: lab.cyan, transform: [{ scaleX: timer }] }]} />
@@ -421,7 +477,10 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
       </View>
 
       {/* ESCENARIO */}
-      <View onLayout={(event: LayoutChangeEvent) => setSceneWidth(event.nativeEvent.layout.width)} style={[styles.scene, { height: sceneHeight, borderColor: lab.line }]}>
+      <View
+        onLayout={(event: LayoutChangeEvent) => setScene({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })}
+        style={[styles.scene, { borderColor: lab.line }]}
+      >
         <SavannaBackground />
         <Animated.View pointerEvents="none" style={[styles.cloud, { top: 10, transform: [{ translateX: cloudAX }] }]}><Cloud width={96} /></Animated.View>
         <Animated.View pointerEvents="none" style={[styles.cloud, { top: 46, opacity: 0.8, transform: [{ translateX: cloudBX }, { scale: 0.7 }] }]}><Cloud width={96} /></Animated.View>
@@ -484,11 +543,16 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
         ) : null}
 
         {/* Comida */}
-        {phase !== 'result' && food ? (
+        {started && phase !== 'result' && food ? (
           <GestureDetector gesture={pan}>
             <Animated.View
-              accessibilityHint="Arrástrala hasta Divu o al bote de basura, o usa los botones de abajo"
+              // Sin botones en pantalla: quien usa lector de pantalla tiene estas dos acciones.
+              accessibilityActions={[{ name: 'divu', label: 'Dar a Divu' }, { name: 'trash', label: 'Tirar al bote' }]}
+              accessibilityHint="Arrástrala hasta Divu o al bote de basura"
               accessibilityLabel={`Comida: ${food.name}`}
+              onAccessibilityAction={(event) => {
+                if (phase === 'play') resolve(event.nativeEvent.actionName === 'divu' ? 'divu' : 'trash');
+              }}
               style={[styles.food, foodBehindTrash && styles.foodBehind, {
                 left: sceneWidth / 2 - FOOD_SIZE / 2,
                 opacity: vanish,
@@ -519,44 +583,57 @@ export function DivuGame({ onDraggingChange }: DivuGameProps) {
             <GameButton icon={<ArrowRightIcon color={lab.onBright} size={18} weight="bold" />} label={round + 1 < ROUNDS ? 'Siguiente comida' : 'Ver resultado'} onPress={next} />
           </Animated.View>
         ) : null}
+
+        {/* Burbuja de diálogo de Divu (arriba de su cabeza). */}
+        {bubbleText ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.bubble, stamp(lab, 4), {
+              bottom: DIVU.bottom + DIVU.height - 4,
+              maxWidth: Math.min(sceneWidth - 32, 320),
+              opacity: bubbleIn.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 1, 1] }),
+              transform: [{ scale: bubbleIn }],
+            }]}
+          >
+            <Text style={[styles.bubbleText, { color: lab.text }]}>{bubbleText}</Text>
+            {!started ? (
+              <View style={styles.bubbleFooter}>
+                <HandTapIcon color={lab.label} size={16} weight="duotone" />
+                <Text style={[styles.bubbleHint, { color: lab.label }]}>
+                  {introStep < INTRO.length - 1 ? `Toca para continuar · ${introStep + 1}/${INTRO.length}` : 'Toca para empezar'}
+                </Text>
+              </View>
+            ) : null}
+            {/* Piquito de la burbuja, apuntando a la cabeza de Divu. */}
+            <View style={[styles.bubbleTail, { backgroundColor: lab.surface, borderColor: lab.line }]} />
+          </Animated.View>
+        ) : null}
       </View>
 
-      {phase === 'result' ? null : (
-        <>
-          {/* Alternativa con botones (accesibilidad y quien prefiera tocar en vez de arrastrar). */}
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={phase !== 'play'}
-              onPress={() => resolve('divu')}
-              style={({ pressed }) => [styles.action, stamp(lab, 4, lab.lime), phase !== 'play' && styles.disabled, pressed && pressedStyle]}
-            >
-              <HeartIcon color={lab.onBright} size={20} weight="fill" />
-              <Text style={[styles.actionText, { color: lab.onBright }]}>Dar a Divu</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={phase !== 'play'}
-              onPress={() => resolve('trash')}
-              style={({ pressed }) => [styles.action, stamp(lab, 4, lab.pink), phase !== 'play' && styles.disabled, pressed && pressedStyle]}
-            >
-              <TrashIcon color={lab.onBright} size={20} weight="fill" />
-              <Text style={[styles.actionText, { color: lab.onBright }]}>Al bote</Text>
-            </Pressable>
-          </View>
-          <View style={[styles.hint, { backgroundColor: lab.specimen, borderColor: lab.line }]}>
-            <HandSwipeRightIcon color={lab.text} size={22} weight="duotone" />
-            <Text style={[styles.hintText, { color: lab.text }]}>Arrastra la comida hasta Divu o al bote antes de que se acabe el tiempo.</Text>
-          </View>
-        </>
-      )}
+      {/* Durante la introducción, tocar EN CUALQUIER PARTE (bajo la barra superior) avanza el diálogo. */}
+      {!started ? (
+        <Pressable
+          accessibilityHint={introStep < INTRO.length - 1 ? 'Toca para continuar' : 'Toca para empezar a jugar'}
+          accessibilityLabel={`Divu dice: ${INTRO[introStep]}`}
+          accessibilityRole="button"
+          onPress={advanceIntro}
+          style={styles.introCatcher}
+        />
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  missionSnake: { width: 82, height: 72, transform: [{ rotate: '-12deg' }] },
-  scene: { borderRadius: 22, borderWidth: 2, overflow: 'hidden', position: 'relative' },
+  root: { flex: 1 },
+  scene: { flex: 1, minHeight: MIN_SCENE_HEIGHT, maxHeight: MAX_SCENE_HEIGHT, borderRadius: 22, borderWidth: 2, overflow: 'hidden', position: 'relative' },
+  // Cubre todo menos la barra superior (Salir y sonido siguen funcionando).
+  introCatcher: { position: 'absolute', top: 64, left: 0, right: 0, bottom: 0, zIndex: 30 },
+  bubble: { position: 'absolute', right: 14, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, zIndex: 25 },
+  bubbleText: { fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 22 },
+  bubbleFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  bubbleHint: { fontFamily: fonts.monoBold, fontSize: 11 },
+  bubbleTail: { position: 'absolute', bottom: -9, right: 104, width: 16, height: 16, borderRightWidth: 2, borderBottomWidth: 2, transform: [{ rotate: '45deg' }] },
   cloud: { position: 'absolute', left: 0 },
   trash: { position: 'absolute', transformOrigin: 'bottom', zIndex: 5 },
   trashLid: { position: 'absolute', left: 0 },
@@ -574,12 +651,6 @@ const styles = StyleSheet.create({
   foodName: { fontFamily: fonts.display, fontSize: 22, lineHeight: 26, marginTop: 2 },
   timerTrack: { flex: 1, height: 14, borderRadius: 7, borderWidth: 2, overflow: 'hidden' },
   timerFill: { flex: 1, transformOrigin: 'left' },
-  actions: { flexDirection: 'row', gap: 12, marginTop: 14, marginBottom: 12 },
-  action: { flex: 1, minHeight: 52, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  actionText: { fontFamily: fonts.bodyBold, fontSize: 15 },
-  disabled: { opacity: 0.5 },
-  hint: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 2, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
-  hintText: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 13, lineHeight: 18 },
   feedback: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 14, marginBottom: 12 },
   feedbackCopy: { flex: 1 },
   feedbackTitle: { fontFamily: fonts.display, fontSize: 18, lineHeight: 22 },
