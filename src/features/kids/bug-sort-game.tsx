@@ -6,6 +6,7 @@ import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import { ArrowRightIcon, ConfettiIcon, TimerIcon, XCircleIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
 import { BugArt, GardenBackground, JAR_LID, JAR_RATIO, JarBack, JarFront, JarLid, type BugKind } from '@/features/kids/bug-art';
+import { DivuAccessory } from '@/features/kids/divu-accessories';
 import { GameButton, GameFinish, GameTopBar, stamp } from '@/features/kids/game-chrome';
 import { Hearts, LIVES, livesLeftText, progressiveMs, projectTarget, SpeechBubble, useDragTrail } from '@/features/kids/game-kit';
 import { useBackgroundMusic, useSfx } from '@/features/kids/sound';
@@ -465,7 +466,12 @@ export function BugSortGame({ onDraggingChange }: BugSortGameProps) {
           <GameFinish
             actionLabel="¡Intentarlo otra vez!"
             celebrate={false}
-            icon={<Image contentFit="contain" source={divuFaces.disgust} style={styles.finishDivu} />}
+            icon={(
+              <View style={styles.finishDivu}>
+                <Image contentFit="contain" source={divuFaces.disgust} style={StyleSheet.absoluteFill} />
+                <DivuAccessory boxWidth={72} face="disgust" kind="safari" />
+              </View>
+            )}
             iconColor={lab.pink}
             onRestart={restart}
             text={`Te quedaste sin vidas en la muestra ${round + 1} de ${ROUNDS}, ¡pero aprendiste algo nuevo!`}
@@ -572,6 +578,8 @@ export function BugSortGame({ onDraggingChange }: BugSortGameProps) {
             {(Object.keys(divuFaces) as Face[]).map((item) => (
               <Animated.View key={item} style={[StyleSheet.absoluteFill, { opacity: faceOpacity[item] }]}>
                 <Image contentFit="contain" source={divuFaces[item]} style={StyleSheet.absoluteFill} />
+                {/* Sombrero de explorador: Divu va de entomólogo en este juego. */}
+                <DivuAccessory boxWidth={GUIDE.width} face={item} kind="safari" />
               </Animated.View>
             ))}
           </Animated.View>
@@ -663,7 +671,7 @@ const styles = StyleSheet.create({
   feedbackCopy: { flex: 1 },
   feedbackTitle: { fontFamily: fonts.display, fontSize: 18, lineHeight: 22 },
   feedbackText: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, marginTop: 4 },
-  finishDivu: { width: 72, height: 50 },
+  finishDivu: { width: 72, height: 48 },
   review: { alignSelf: 'stretch', gap: 8, marginBottom: 16 },
   reviewTitle: { fontFamily: fonts.monoBold, fontSize: 11 },
   reviewItem: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 2, borderRadius: 14, padding: 10 },
