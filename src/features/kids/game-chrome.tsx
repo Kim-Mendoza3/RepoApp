@@ -1,11 +1,12 @@
 import { router } from 'expo-router';
-import { useEffect, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GridBackground } from '@/components/grid-background';
 import { ArrowClockwiseIcon, ArrowLeftIcon, SpeakerHighIcon, SpeakerSlashIcon, StarIcon, TrophyIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
+import { Celebration } from '@/features/kids/celebration';
 import { useSoundSettings } from '@/features/kids/sound';
 import { pressedStyle } from '@/theme/common-styles';
 import { fonts } from '@/theme/fonts';
@@ -31,13 +32,23 @@ export function stamp(lab: LabColors, depth = 4, background?: string) {
   };
 }
 
+/** Permite que la pantalla final (GameFinish) lance la celebración sobre toda la pantalla. */
+const CelebrationContext = createContext<() => void>(() => {});
+
 /** Pantalla completa de un juego: fondo cuadriculado, área segura y scroll (que se puede congelar). */
 export function GameScreen({ children, scrollEnabled = true }: { children: ReactNode; scrollEnabled?: boolean }) {
   const lab = useLabColors();
+  // Cada partida terminada monta una celebración nueva (la "key" la reinicia y cambia la semilla).
+  const [celebration, setCelebration] = useState(0);
+  const celebrate = useCallback(() => setCelebration((value) => value + 1), []);
   return (
     <SafeAreaView style={[styles.flex, { backgroundColor: lab.background }]} edges={['top', 'bottom']}>
       <GridBackground color={lab.grid} />
-      <ScrollView contentContainerStyle={styles.content} scrollEnabled={scrollEnabled}>{children}</ScrollView>
+      <CelebrationContext.Provider value={celebrate}>
+        <ScrollView contentContainerStyle={styles.content} scrollEnabled={scrollEnabled}>{children}</ScrollView>
+      </CelebrationContext.Provider>
+      {/* Encima del scroll, para que cubra toda la pantalla y no quede recortada. */}
+      {celebration > 0 ? <Celebration key={celebration} seed={celebration * 7919} /> : null}
     </SafeAreaView>
   );
 }
@@ -94,9 +105,14 @@ export function MissionCard({ label, title, text, art }: { label: string; title:
   );
 }
 
-/** Pantalla final con el resultado y la opción de volver a jugar. */
+/** Pantalla final con el resultado, la celebración y la opción de volver a jugar. */
 export function GameFinish({ title, text, onRestart }: { title: string; text: string; onRestart: () => void }) {
   const lab = useLabColors();
+  const celebrate = useContext(CelebrationContext);
+  // Al aparecer la pantalla final: ¡fuegos artificiales y confeti!
+  useEffect(() => {
+    celebrate();
+  }, [celebrate]);
   return (
     <View style={[styles.finish, stamp(lab, 6)]}>
       <View style={[styles.trophy, stamp(lab, 4, lab.lime)]}>
