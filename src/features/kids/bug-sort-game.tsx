@@ -64,6 +64,7 @@ const sounds = {
   buzz: require('@/assets/sounds/buzz.wav'),
   clink: require('@/assets/sounds/clink.wav'),
   jarLid: require('@/assets/sounds/jar-lid.wav'),
+  jarOpen: require('@/assets/sounds/jar-open.wav'),
   correct: require('@/assets/sounds/correct.wav'),
   wrong: require('@/assets/sounds/wrong.wav'),
   timeout: require('@/assets/sounds/timeout.wav'),
@@ -121,6 +122,7 @@ export function BugSortGame({ onDraggingChange }: BugSortGameProps) {
   const playBuzz = useSfx(sounds.buzz, 0.5);
   const playClink = useSfx(sounds.clink, 0.7);
   const playJarLid = useSfx(sounds.jarLid, 0.7);
+  const playJarOpen = useSfx(sounds.jarOpen, 0.75);
   const playCorrect = useSfx(sounds.correct, 0.8);
   const playWrong = useSfx(sounds.wrong, 0.7);
   const playTimeout = useSfx(sounds.timeout, 0.7);
@@ -161,6 +163,7 @@ export function BugSortGame({ onDraggingChange }: BugSortGameProps) {
     if (lidIsOpen.current[group] === open) return;
     lidIsOpen.current[group] = open;
     if (open) {
+      playJarOpen(); // se desenrosca y hace "¡plop!" como chupón
       Animated.spring(lids[group], { toValue: 1, useNativeDriver: true, speed: 22, bounciness: 10 }).start();
       return;
     }

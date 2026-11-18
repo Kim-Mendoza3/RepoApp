@@ -655,6 +655,20 @@ def make_jar_lid(out):
     save(b, out / 'jar-lid.wav', peak=0.6)
 
 
+def make_jar_open(out):
+    """Se abre el frasco: tapa que se desenrosca (clics rápidos) y un "¡plop!" de chupón al soltarse."""
+    b = silence(0.5)
+    # Desenroscar: 4 clics plásticos cada vez más rápidos.
+    for k, t in enumerate((0.0, 0.07, 0.125, 0.17)):
+        noise(b, t, 0.018, 0.35 + 0.05 * k, cutoff=0.85, adsr=(0.001, 0.006, 0.3, 0.008))
+        tone(b, t, 0.03, 1900 + 120 * k, 'sine', 0.12, adsr=(0.001, 0.008, 0.2, 0.015))
+    # ¡Plop! de chupón: el aire entra de golpe (tono que cae rápido + soplo corto).
+    tone(b, 0.22, 0.12, 820, 'sine', 0.75, freq_end=230, adsr=(0.002, 0.03, 0.5, 0.06))
+    tone(b, 0.22, 0.08, 1640, 'sine', 0.18, freq_end=460, adsr=(0.002, 0.02, 0.4, 0.04))
+    noise(b, 0.215, 0.05, 0.25, cutoff=0.35, adsr=(0.002, 0.015, 0.3, 0.025))
+    save(b, out / 'jar-open.wav', peak=0.65)
+
+
 if __name__ == '__main__':
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
@@ -671,3 +685,4 @@ if __name__ == '__main__':
     make_buzz(out)
     make_clink(out)
     make_jar_lid(out)
+    make_jar_open(out)
