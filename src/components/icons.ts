@@ -27,6 +27,7 @@ export { ListIcon } from 'phosphor-react-native/src/icons/List';
 export { MagnetIcon } from 'phosphor-react-native/src/icons/Magnet';
 export { MicroscopeIcon } from 'phosphor-react-native/src/icons/Microscope';
 export { MoonIcon } from 'phosphor-react-native/src/icons/Moon';
+export { LeafIcon } from 'phosphor-react-native/src/icons/Leaf';
 export { PlanetIcon } from 'phosphor-react-native/src/icons/Planet';
 export { PlayIcon } from 'phosphor-react-native/src/icons/Play';
 export { RobotIcon } from 'phosphor-react-native/src/icons/Robot';
