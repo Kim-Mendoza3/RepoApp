@@ -72,7 +72,6 @@ const MAX_SCENE_HEIGHT = 760;
 const SKY = { side: 30, top: 104, bottom: 150 }; // margen del área donde van las estrellas
 const SNAP = 32; // qué tan cerca debe pasar el dedo para "enganchar" la estrella correcta
 const DECOY_HIT = 20; // las estrellas falsas solo cuentan si el dedo pasa muy cerca (evita errores injustos)
-const HINT_AFTER_MS = 4000; // si no avanza en 4 s, la siguiente estrella brilla un poco
 const GUIDE = { width: 144, height: 96, bottom: 4 };
 const LINE_COLOR = '#7DE3F4';
 const CHART = { width: 90, height: 72 };
@@ -177,7 +176,6 @@ export function StarConnectGame({ onDraggingChange }: StarConnectGameProps) {
   const livesRef = useRef(LIVES);
   const [gameOver, setGameOver] = useState(false);
   const [mistakes, setMistakes] = useState<Constellation[]>([]);
-  const [hint, setHint] = useState(false);
   const [wrongDecoy, setWrongDecoy] = useState<number | null>(null);
   const [face, setFace] = useState<Face>('normal');
   const strokeActive = useRef(false);
@@ -281,7 +279,6 @@ export function StarConnectGame({ onDraggingChange }: StarConnectGameProps) {
   const goToStep = (next: number) => {
     stepRef.current = next;
     setStep(next);
-    setHint(false);
   };
 
   // Ambiente: la estrella de inicio late y todas titilan.
@@ -314,13 +311,6 @@ export function StarConnectGame({ onDraggingChange }: StarConnectGameProps) {
     if (finished) (gameOver ? playLose : playWin)();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [finished]);
-
-  // Pista: si no avanza en unos segundos, la siguiente estrella brilla.
-  useEffect(() => {
-    if (!started || phase !== 'play') return;
-    const id = setTimeout(() => setHint(true), HINT_AFTER_MS);
-    return () => clearTimeout(id);
-  }, [started, phase, step, round]);
 
   const advanceIntro = () => {
     if (introStep < INTRO.length - 1) return setIntroStep((value) => value + 1);
@@ -560,9 +550,8 @@ export function StarConnectGame({ onDraggingChange }: StarConnectGameProps) {
   const reachedStars = new Set(constellation.path.slice(0, step).filter((value): value is number => value !== null));
   const current = skipBreaks(constellation.path, step);
   const target = phase === 'play' ? constellation.path[current] : null;
-  const previous = current > 0 ? constellation.path[current - 1] : null;
-  const startStar = target !== null && target !== undefined && (previous === null || current === 0) ? target : null;
-  const hintStar = hint && target !== null && target !== undefined ? target : null;
+  // La estrella que sigue siempre se ilumina en amarillo (en cuanto se conecta la anterior).
+  const nextStar = target !== null && target !== undefined ? target : null;
   const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.95, 0.35] });
   const rippleScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 2.1] });
   const rippleOpacity = pulse.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.95, 0] });
@@ -625,12 +614,11 @@ export function StarConnectGame({ onDraggingChange }: StarConnectGameProps) {
               {allStars.map((star, i) => {
                 const isReal = star.real !== undefined;
                 const lit = isReal && reachedStars.has(star.real as number);
-                const isStart = isReal && star.real === startStar;
-                const isHint = isReal && star.real === hintStar && !isStart;
+                const isStart = isReal && star.real === nextStar;
                 const isWrong = star.decoy !== undefined && star.decoy === wrongDecoy;
                 return (
                   <View key={i} pointerEvents="none" style={[styles.starWrap, { left: star.x - 22, top: star.y - 22 }]}>
-                    {/* Estrella de inicio: brillo amarillo, aro fijo y una onda que se expande */}
+                    {/* Estrella que sigue: brillo amarillo, aro fijo y una onda que se expande */}
                     {isStart ? (
                       <>
                         <Animated.View style={[styles.startGlow, { opacity: pulseOpacity }]} />
@@ -638,7 +626,6 @@ export function StarConnectGame({ onDraggingChange }: StarConnectGameProps) {
                         <View style={styles.startRing} />
                       </>
                     ) : null}
-                    {isHint ? <Animated.View style={[styles.ring, styles.hintRing, { opacity: pulseOpacity }]} /> : null}
                     {isWrong ? <View style={[styles.ring, styles.wrongRing]} /> : null}
                     <Animated.View style={[styles.starGlow, lit && styles.starGlowLit, isStart && styles.starGlowStart, { opacity: isStart ? 1 : i % 2 ? twinkleA : twinkleB }]} />
                     <View style={[styles.star, lit && styles.starLit, isStart && styles.starStart, isWrong && styles.starWrong]} />
@@ -729,14 +716,13 @@ const styles = StyleSheet.create({
   startGlow: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: '#FDE047', opacity: 0.6 },
   startRing: { position: 'absolute', width: 36, height: 36, borderRadius: 18, borderWidth: 3.5, borderColor: '#FEF08A' },
   ripple: { position: 'absolute', width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: '#FDE047' },
-  hintRing: { borderColor: '#FDE68A' },
   wrongRing: { borderColor: '#F43F5E', width: 38, height: 38, borderRadius: 19, borderWidth: 4 },
   starGlow: { position: 'absolute', width: 22, height: 22, borderRadius: 11, backgroundColor: '#E0E7FF', opacity: 0.4 },
   starGlowLit: { backgroundColor: LINE_COLOR, width: 28, height: 28, borderRadius: 14 },
   star: { width: 11, height: 11, borderRadius: 6, backgroundColor: '#FFFFFF' },
   starLit: { width: 15, height: 15, borderRadius: 8, backgroundColor: '#FFFFFF' },
   starWrong: { backgroundColor: '#FDA4AF' },
-  // La estrella donde se empieza: amarilla y más grande que las demás.
+  // La estrella que sigue: amarilla y más grande que las demás.
   starGlowStart: { backgroundColor: '#FDE047', width: 30, height: 30, borderRadius: 15, opacity: 1 },
   starStart: { width: 15, height: 15, borderRadius: 8, backgroundColor: '#FFFBEB' },
   nameTag: { position: 'absolute', left: 16, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(125, 227, 244, 0.16)' },
