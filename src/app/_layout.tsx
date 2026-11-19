@@ -46,9 +46,8 @@ export default function RootLayout() {
 
 function RootNavigator() {
   const { mode } = useAppTheme();
-  const { session, loading } = useAuth();
+  const { isStaff, loading } = useAuth();
   const [introDone, setIntroDone] = useState(false);
-  const isLoggedIn = Boolean(session);
 
   useEffect(() => {
     const timeout = setTimeout(() => setIntroDone(true), INTRO_MS);
@@ -60,8 +59,8 @@ function RootNavigator() {
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       {/*
         Rutas protegidas: si `guard` es false, esas pantallas no existen para el usuario
-        y Expo Router lo manda a `redirectTo`. Aquí solo el login está protegido: con
-        sesión iniciada deja de existir y la app regresa a Inicio.
+        y Expo Router lo manda a `redirectTo`. La app se usa SIN cuenta; el login es solo
+        para administradores y desaparece cuando un administrador inicia sesión.
       */}
       <Stack screenOptions={{ headerShown: false }}>
         {/* MODO INVITADO: el contenido público se puede usar sin cuenta (lo exigen las tiendas). */}
@@ -71,8 +70,8 @@ function RootNavigator() {
         <Stack.Screen name="juegos/divu" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
         <Stack.Screen name="juegos/insectos" options={{ gestureEnabled: false, fullScreenGestureEnabled: false }} />
         <Stack.Screen name="juegos/estrellas" />
-        {/* El login solo existe sin sesión; al iniciar sesión desaparece y se vuelve a Inicio. */}
-        <Stack.Protected guard={!isLoggedIn} redirectTo="/">
+        {/* El login sigue abierto mientras se revisa el rol: si la cuenta no es de administrador, ahí mismo se avisa. */}
+        <Stack.Protected guard={!isStaff} redirectTo="/">
           <Stack.Screen name="(auth)" options={{ animation: 'slide_from_bottom' }} />
         </Stack.Protected>
         <Stack.Screen name="auth/callback" />

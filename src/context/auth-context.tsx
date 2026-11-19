@@ -14,9 +14,16 @@ type AuthContextValue = {
   /** admin o agenda_manager: pueden ver el panel de administración. */
   isStaff: boolean;
   signOut: () => Promise<void>;
-  /** Elimina para siempre la cuenta actual y sus datos personales (ver migración delete_account). */
-  deleteAccount: () => Promise<{ ok: true } | { ok: false; message: string }>;
+  /**
+   * true si alguien inició sesión con una cuenta que NO es de administrador: la sesión se cerró
+   * sola (la app solo tiene cuentas para el equipo). El login lo usa para mostrar el aviso.
+   */
+  accessDenied: boolean;
+  clearAccessDenied: () => void;
 };
+
+/** Roles con acceso: solo el equipo de la asociación tiene cuenta en la app. */
+const STAFF_ROLES: AppRole[] = ['admin', 'agenda_manager'];
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -25,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(Boolean(supabase));
   // Guardamos a qué usuario pertenece el rol para no mostrar el rol de una sesión anterior.
   const [roleState, setRoleState] = useState<{ userId: string; role: AppRole | null } | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   // 1) Recupera la sesión guardada y escucha inicios/cierres de sesión.
   useEffect(() => {
@@ -63,7 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(({ data, error }) => {
         if (!mounted) return;
         const row = data as { role: AppRole } | null;
-        setRoleState({ userId, role: error ? null : row?.role ?? null });
+        const role = error ? null : row?.role ?? null;
+        setRoleState({ userId, role });
+        // Los usuarios usan la app sin cuenta; si entra una cuenta que no es del equipo, se cierra.
+        if (!error && !(role && STAFF_ROLES.includes(role))) {
+          setAccessDenied(true);
+          supabase?.auth.signOut(); // cierra la sesión también en el servidor
+        }
       });
 
     return () => {
@@ -77,26 +91,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     session,
     role,
     loading,
-    isStaff: role === 'admin' || role === 'agenda_manager',
+    isStaff: Boolean(role && STAFF_ROLES.includes(role)),
     signOut: async () => {
       if (!supabase) return;
       const { error } = await supabase.auth.signOut();
       if (error) Alert.alert('No se pudo cerrar la sesión', error.message);
     },
-    deleteAccount: async () => {
-      if (!supabase) return { ok: false, message: 'La conexión con el servidor no está configurada.' };
-      const { error } = await supabase.rpc('delete_my_account' as never);
-      if (error) {
-        const message = error.message.includes('STAFF_CONTENT')
-          ? 'Tu cuenta creó talleres, sesiones o eventos de la asociación. Pide a otra persona del staff que los reasigne y vuelve a intentarlo.'
-          : `No se pudo eliminar la cuenta. ${error.message}`;
-        return { ok: false, message };
-      }
-      // El usuario ya no existe en el servidor: solo limpiamos la sesión guardada en el dispositivo.
-      await supabase.auth.signOut({ scope: 'local' });
-      return { ok: true };
-    },
-  }), [session, role, loading]);
+    accessDenied,
+    clearAccessDenied: () => setAccessDenied(false),
+  }), [session, role, loading, accessDenied]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

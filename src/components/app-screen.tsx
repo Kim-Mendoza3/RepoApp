@@ -1,12 +1,12 @@
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useAnimatedValue, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { logoSource, logoStyles } from '@/components/brand-logo';
 import { GridBackground } from '@/components/grid-background';
-import { ListIcon, MoonIcon, SignOutIcon, SunIcon, TrashIcon, UserCircleIcon, UserCirclePlusIcon, XIcon } from '@/components/icons';
+import { ListIcon, LockKeyIcon, MoonIcon, SignOutIcon, SunIcon, XIcon } from '@/components/icons';
 import { consumeTabTransition } from '@/components/tab-transition';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme, useColors, useLabColors } from '@/context/theme-context';
@@ -66,34 +66,13 @@ function AppHeader({ section, isLab }: { section: string; isLab: boolean }) {
   const colors = useColors();
   const labColors = useLabColors();
   const { mode, changeMode } = useAppTheme();
-  const { session, signOut, deleteAccount } = useAuth();
+  const { session, isStaff, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const dark = mode === 'dark';
 
-  // Doble confirmación porque no se puede deshacer (requisito de App Store y Google Play).
-  const confirmDeleteAccount = () => {
-    Alert.alert(
-      '¿Eliminar tu cuenta?',
-      'Se borrarán para siempre tu cuenta, tu perfil y los perfiles de niñas y niños que registraste. Esta acción no se puede deshacer.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar cuenta',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await deleteAccount();
-            setMenuOpen(false);
-            if (result.ok) Alert.alert('Cuenta eliminada', 'Tu cuenta y tus datos se eliminaron. Puedes seguir usando la app como invitado.');
-            else Alert.alert('No se pudo eliminar', result.message);
-          },
-        },
-      ],
-    );
-  };
-
-  const openAuth = (authMode: 'login' | 'register') => {
+  const openAdminLogin = () => {
     setMenuOpen(false);
-    router.push({ pathname: '/login', params: { mode: authMode } });
+    router.push('/login');
   };
 
   const text = isLab ? labColors.text : colors.text;
@@ -137,30 +116,21 @@ function AppHeader({ section, isLab }: { section: string; isLab: boolean }) {
       </View>
       {menuOpen && (
         <View style={[styles.menu, shadowStyles.soft, { backgroundColor: surface, borderColor: isLab ? labColors.line : colors.line }]}>
-          {session ? (
+          {session && isStaff ? (
             <>
-              <Text numberOfLines={1} style={[textStyles.label, styles.menuLabel, { color: colors.muted }]}>{`// sesión: ${session.user.email ?? 'cuenta activa'}`}</Text>
+              <Text numberOfLines={1} style={[textStyles.label, styles.menuLabel, { color: colors.muted }]}>{`// administrador: ${session.user.email ?? 'cuenta activa'}`}</Text>
               <Pressable accessibilityRole="button" onPress={signOut} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
                 <SignOutIcon color={text} size={20} weight="duotone" />
                 <Text style={[styles.menuText, { color: text }]}>Cerrar sesión</Text>
               </Pressable>
-              <View style={[styles.menuDivider, { backgroundColor: isLab ? labColors.line : colors.line }]} />
-              <Pressable accessibilityRole="button" onPress={confirmDeleteAccount} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
-                <TrashIcon color={colors.danger} size={20} weight="duotone" />
-                <Text style={[styles.menuText, { color: colors.danger }]}>Eliminar mi cuenta</Text>
-              </Pressable>
             </>
           ) : (
             <>
-              {/* Modo invitado: la cuenta es opcional. */}
-              <Text style={[textStyles.label, styles.menuLabel, { color: colors.muted }]}>{'// explorando como invitado'}</Text>
-              <Pressable accessibilityRole="button" onPress={() => openAuth('login')} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
-                <UserCircleIcon color={colors.accent} size={20} weight="duotone" />
-                <Text style={[styles.menuText, { color: text }]}>Iniciar sesión</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" onPress={() => openAuth('register')} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
-                <UserCirclePlusIcon color={colors.accent2} size={20} weight="duotone" />
-                <Text style={[styles.menuText, { color: text }]}>Crear cuenta</Text>
+              {/* La app se usa sin cuenta; el acceso es solo para el equipo que sube la información. */}
+              <Text style={[textStyles.label, styles.menuLabel, { color: colors.muted }]}>{'// la app se usa sin cuenta'}</Text>
+              <Pressable accessibilityRole="button" onPress={openAdminLogin} style={({ pressed }) => [styles.menuRow, pressed && pressedStyle]}>
+                <LockKeyIcon color={colors.muted} size={18} weight="duotone" />
+                <Text style={[styles.menuText, styles.menuTextQuiet, { color: colors.muted }]}>Acceso para administradores</Text>
               </Pressable>
             </>
           )}
@@ -209,6 +179,7 @@ const styles = StyleSheet.create({
   menuLabel: { marginBottom: 4 },
   menuDivider: { height: 1, marginVertical: 6 },
   menuText: { fontFamily: fonts.bodySemi, fontSize: 15 },
+  menuTextQuiet: { fontFamily: fonts.bodyMedium, fontSize: 14 },
   watermark: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   watermarkImage: { width: 310, height: 310 },
 });
