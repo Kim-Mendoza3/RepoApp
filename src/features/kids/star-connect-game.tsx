@@ -6,7 +6,6 @@ import Svg, { Line } from 'react-native-svg';
 
 import { ArrowRightIcon, ShootingStarIcon, TimerIcon } from '@/components/icons';
 import { useLabColors } from '@/context/theme-context';
-import { DivuAccessory } from '@/features/kids/divu-accessories';
 import { GameButton, GameFinish, GameTopBar, stamp } from '@/features/kids/game-chrome';
 import { Hearts, LIVES, livesLeftText, progressiveMs, SpeechBubble } from '@/features/kids/game-kit';
 import { useBackgroundMusic, useSfx } from '@/features/kids/sound';
@@ -74,7 +73,7 @@ const SKY = { side: 30, top: 104, bottom: 150 }; // margen del área donde van l
 const SNAP = 32; // qué tan cerca debe pasar el dedo para "enganchar" la estrella correcta
 const DECOY_HIT = 20; // las estrellas falsas solo cuentan si el dedo pasa muy cerca (evita errores injustos)
 const HINT_AFTER_MS = 4000; // si no avanza en 4 s, la siguiente estrella brilla un poco
-const GUIDE = { width: 126, height: 84, bottom: 6 };
+const GUIDE = { width: 144, height: 96, bottom: 4 };
 const LINE_COLOR = '#7DE3F4';
 const CHART = { width: 90, height: 72 };
 const CHART_RATIO = CHART.height / CHART.width; // alto / ancho de la figura
@@ -87,10 +86,11 @@ const INTRO = [
 ];
 const CHEER = '¡Más estrellas por explorar!';
 
+// Divu astronauta (traje y casco incluidos): normal al explicar, feliz al acertar y enojado al fallar.
 const divuFaces = {
-  normal: require('@/assets/images/serpiente-normal.png'),
-  happy: require('@/assets/images/divu-masticando.png'),
-  disgust: require('@/assets/images/divu-disgustado.png'),
+  normal: require('@/assets/images/divu-astro-normal.png'),
+  happy: require('@/assets/images/divu-astro-feliz.png'),
+  disgust: require('@/assets/images/divu-astro-enojado.png'),
 };
 type Face = keyof typeof divuFaces;
 
@@ -153,7 +153,12 @@ function skipBreaks(path: (number | null)[], from: number) {
  * Juego "Une las estrellas": en el cielo hay estrellas de la constelación y otras falsas.
  * Mirando la carta estelar, se traza la figura arrastrando el dedo de estrella en estrella.
  */
-export function StarConnectGame() {
+type StarConnectGameProps = {
+  /** Avisa cuando el dedo está trazando, para congelar el scroll de la pantalla. */
+  onDraggingChange?: (dragging: boolean) => void;
+};
+
+export function StarConnectGame({ onDraggingChange }: StarConnectGameProps) {
   const lab = useLabColors();
   const [round, setRound] = useState(0);
   // Cuenta las partidas: al reiniciar en la misma ronda, el reloj vuelve a arrancar.
@@ -400,6 +405,7 @@ export function StarConnectGame() {
     disableReanimated: true,
     // Al TOCAR (antes de moverse): ¿empezó en la estrella correcta?
     onBegin: (event) => {
+      onDraggingChange?.(true);
       const current = skipBreaks(constellation.path, stepRef.current);
       const previous = current > 0 ? constellation.path[current - 1] : null;
       const touch = { x: event.x, y: event.y };
@@ -474,6 +480,7 @@ export function StarConnectGame() {
     },
     // Al levantar el dedo (o si el gesto se cancela): se suelta el trazo.
     onFinalize: () => {
+      onDraggingChange?.(false);
       strokeActive.current = false;
       liveOpacity.setValue(0);
     },
@@ -530,7 +537,6 @@ export function StarConnectGame() {
     const helmetDivu = (
       <View style={styles.finishDivu}>
         <Image contentFit="contain" source={divuFaces.disgust} style={StyleSheet.absoluteFill} />
-        <DivuAccessory boxWidth={72} face="disgust" kind="astronaut" />
       </View>
     );
     return (
@@ -665,7 +671,6 @@ export function StarConnectGame() {
             {(Object.keys(divuFaces) as Face[]).map((item) => (
               <Animated.View key={item} style={[StyleSheet.absoluteFill, { opacity: faceOpacity[item] }]}>
                 <Image contentFit="contain" source={divuFaces[item]} style={StyleSheet.absoluteFill} />
-                <DivuAccessory boxWidth={GUIDE.width} face={item} kind="astronaut" />
               </Animated.View>
             ))}
           </Animated.View>

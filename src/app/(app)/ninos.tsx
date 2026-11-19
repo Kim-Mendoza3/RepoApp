@@ -16,6 +16,7 @@ import { pressedStyle, textStyles } from '@/theme/common-styles';
 import { fonts } from '@/theme/fonts';
 
 const divuSource = require('@/assets/images/serpiente-normal.png');
+const divuAstronaut = require('@/assets/images/divu-astro-normal.png');
 
 type IconComponent = ComponentType<{ color?: string; size?: number; weight?: 'duotone' | 'bold' | 'fill' }>;
 type Subject = 'biologia' | 'astronomia' | 'quimica';
@@ -212,8 +213,7 @@ function StarsArt() {
         </Svg>
       </Animated.View>
       <View style={styles.astroDivu}>
-        <Image accessibilityLabel="Divu astronauta" contentFit="contain" source={divuSource} style={StyleSheet.absoluteFill} />
-        <DivuAccessory boxWidth={78} face="normal" kind="astronaut" />
+        <Image accessibilityLabel="Divu astronauta" contentFit="contain" source={divuAstronaut} style={StyleSheet.absoluteFill} />
       </View>
       {/* Centro de cada estrella: siempre blanco y brillante (solo titila el halo). */}
       <Svg height={H} style={StyleSheet.absoluteFill} viewBox={`0 0 ${W} ${H}`} width="100%">
@@ -251,5 +251,5 @@ const styles = StyleSheet.create({
   legsTag: { fontFamily: fonts.monoBold, fontSize: 10, borderWidth: 2, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1, marginTop: -4, overflow: 'hidden' },
   bugsDivu: { width: 96, height: 64, marginTop: 34 },
   sky: { position: 'absolute', left: 0, right: 0, top: 6, height: 150 },
-  astroDivu: { position: 'absolute', left: 16, top: 8, width: 78, height: 52 },
+  astroDivu: { position: 'absolute', left: 12, top: 4, width: 96, height: 64 },
 });

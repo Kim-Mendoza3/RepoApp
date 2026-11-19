@@ -1,11 +1,15 @@
+import { useState } from 'react';
+
 import { GameScreen } from '@/features/kids/game-chrome';
 import { StarConnectGame } from '@/features/kids/star-connect-game';
 
-// Juego "Une las estrellas". El trazo usa un gesto nativo, así que no hace falta congelar el scroll.
+// Juego "Une las estrellas". Mientras el dedo traza, se congela el scroll de la pantalla
+// para que no se "robe" el gesto (igual que en los otros juegos de arrastrar).
 export default function StarConnectScreen() {
+  const [dragging, setDragging] = useState(false);
   return (
-    <GameScreen>
-      <StarConnectGame />
+    <GameScreen scrollEnabled={!dragging}>
+      <StarConnectGame onDraggingChange={setDragging} />
     </GameScreen>
   );
 }
