@@ -282,10 +282,8 @@ export function StarConnectGame() {
   // Ambiente: la estrella de inicio late y todas titilan.
   useEffect(() => {
     const loops = [
-      Animated.loop(Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 600, useNativeDriver: true }),
-      ])),
+      // Pulso de 0 a 1 que vuelve a empezar: la onda de la estrella de inicio crece y se apaga.
+      Animated.loop(Animated.timing(pulse, { toValue: 1, duration: 1100, easing: Easing.out(Easing.quad), useNativeDriver: true })),
       Animated.loop(Animated.sequence([
         Animated.timing(twinkle, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         Animated.timing(twinkle, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -559,8 +557,9 @@ export function StarConnectGame() {
   const previous = current > 0 ? constellation.path[current - 1] : null;
   const startStar = target !== null && target !== undefined && (previous === null || current === 0) ? target : null;
   const hintStar = hint && target !== null && target !== undefined ? target : null;
-  const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.7] });
-  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 0.25] });
+  const pulseOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.95, 0.35] });
+  const rippleScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 2.1] });
+  const rippleOpacity = pulse.interpolate({ inputRange: [0, 0.15, 1], outputRange: [0, 0.95, 0] });
   const twinkleA = twinkle.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
   const twinkleB = twinkle.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] });
   const hopY = hop.interpolate({ inputRange: [0, 1], outputRange: [0, -18] });
@@ -625,11 +624,18 @@ export function StarConnectGame() {
                 const isWrong = star.decoy !== undefined && star.decoy === wrongDecoy;
                 return (
                   <View key={i} pointerEvents="none" style={[styles.starWrap, { left: star.x - 22, top: star.y - 22 }]}>
-                    {isStart ? <Animated.View style={[styles.ring, { borderColor: lab.lime, opacity: pulseOpacity, transform: [{ scale: pulseScale }] }]} /> : null}
+                    {/* Estrella de inicio: brillo amarillo, aro fijo y una onda que se expande */}
+                    {isStart ? (
+                      <>
+                        <Animated.View style={[styles.startGlow, { opacity: pulseOpacity }]} />
+                        <Animated.View style={[styles.ripple, { opacity: rippleOpacity, transform: [{ scale: rippleScale }] }]} />
+                        <View style={styles.startRing} />
+                      </>
+                    ) : null}
                     {isHint ? <Animated.View style={[styles.ring, styles.hintRing, { opacity: pulseOpacity }]} /> : null}
                     {isWrong ? <View style={[styles.ring, styles.wrongRing]} /> : null}
-                    <Animated.View style={[styles.starGlow, lit && styles.starGlowLit, { opacity: i % 2 ? twinkleA : twinkleB }]} />
-                    <View style={[styles.star, lit && styles.starLit, isWrong && styles.starWrong]} />
+                    <Animated.View style={[styles.starGlow, lit && styles.starGlowLit, isStart && styles.starGlowStart, { opacity: isStart ? 1 : i % 2 ? twinkleA : twinkleB }]} />
+                    <View style={[styles.star, lit && styles.starLit, isStart && styles.starStart, isWrong && styles.starWrong]} />
                   </View>
                 );
               })}
@@ -715,6 +721,9 @@ const styles = StyleSheet.create({
   introCatcher: { position: 'absolute', top: 64, left: 0, right: 0, bottom: 0, zIndex: 30 },
   starWrap: { position: 'absolute', width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', width: 34, height: 34, borderRadius: 17, borderWidth: 3 },
+  startGlow: { position: 'absolute', width: 44, height: 44, borderRadius: 22, backgroundColor: '#FDE047', opacity: 0.6 },
+  startRing: { position: 'absolute', width: 36, height: 36, borderRadius: 18, borderWidth: 3.5, borderColor: '#FEF08A' },
+  ripple: { position: 'absolute', width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: '#FDE047' },
   hintRing: { borderColor: '#FDE68A' },
   wrongRing: { borderColor: '#F43F5E', width: 38, height: 38, borderRadius: 19, borderWidth: 4 },
   starGlow: { position: 'absolute', width: 22, height: 22, borderRadius: 11, backgroundColor: '#E0E7FF', opacity: 0.4 },
@@ -722,6 +731,9 @@ const styles = StyleSheet.create({
   star: { width: 11, height: 11, borderRadius: 6, backgroundColor: '#FFFFFF' },
   starLit: { width: 15, height: 15, borderRadius: 8, backgroundColor: '#FFFFFF' },
   starWrong: { backgroundColor: '#FDA4AF' },
+  // La estrella donde se empieza: amarilla y más grande que las demás.
+  starGlowStart: { backgroundColor: '#FDE047', width: 30, height: 30, borderRadius: 15, opacity: 1 },
+  starStart: { width: 15, height: 15, borderRadius: 8, backgroundColor: '#FFFBEB' },
   nameTag: { position: 'absolute', left: 16, flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: 'rgba(125, 227, 244, 0.16)' },
   nameTagText: { color: LINE_COLOR, fontFamily: fonts.monoBold, fontSize: 12 },
   chart: { position: 'absolute', top: 12, left: 12, borderRadius: 14, paddingHorizontal: 8, paddingTop: 6, paddingBottom: 2, zIndex: 5 },

@@ -26,18 +26,30 @@ export function NightSkyBackground() {
           <Stop offset="1" stopColor="#22D3EE" stopOpacity={0} />
         </RadialGradient>
         <RadialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
-          <Stop offset="0" stopColor="#FEF3C7" stopOpacity={0.45} />
-          <Stop offset="1" stopColor="#FEF3C7" stopOpacity={0} />
+          <Stop offset="0.35" stopColor="#E0E7FF" stopOpacity={0.4} />
+          <Stop offset="1" stopColor="#E0E7FF" stopOpacity={0} />
+        </RadialGradient>
+        {/* Superficie de la luna: luz desde arriba a la izquierda, borde un poco más oscuro */}
+        <RadialGradient id="moonSurface" cx="38%" cy="34%" r="70%">
+          <Stop offset="0" stopColor="#FFFDF5" />
+          <Stop offset="0.65" stopColor="#ECE7D8" />
+          <Stop offset="1" stopColor="#B9B3A3" />
         </RadialGradient>
       </Defs>
       <Rect x="0" y="0" width="300" height="400" fill="url(#nightSky)" />
       <Ellipse cx="80" cy="150" rx="120" ry="70" fill="url(#nebula)" />
       <Ellipse cx="230" cy="250" rx="110" ry="60" fill="url(#nebula2)" />
       {DUST.map((star, i) => <Circle key={i} cx={star.x} cy={star.y} r={star.r} fill="#E0E7FF" opacity={star.o} />)}
-      {/* Luna creciente */}
-      <Circle cx="258" cy="46" r="34" fill="url(#moonGlow)" />
-      <Circle cx="258" cy="46" r="16" fill="#FEF3C7" />
-      <Circle cx="265" cy="41" r="14" fill="#0A1445" />
+      {/* Luna llena con "mares" y cráteres, y su resplandor (lejos del borde: en pantallas altas se recortan los lados) */}
+      <Circle cx="214" cy="58" r="44" fill="url(#moonGlow)" />
+      <Circle cx="214" cy="58" r="19" fill="url(#moonSurface)" />
+      <Ellipse cx="208" cy="52" rx="6" ry="4.5" fill="#B8B2A2" opacity={0.55} />
+      <Ellipse cx="220" cy="62" rx="5" ry="3.5" fill="#B8B2A2" opacity={0.5} />
+      <Ellipse cx="211" cy="67" rx="3.5" ry="2.5" fill="#B8B2A2" opacity={0.45} />
+      <Circle cx="223" cy="50" r="2.2" fill="#A8A293" opacity={0.6} />
+      <Circle cx="203" cy="62" r="1.6" fill="#A8A293" opacity={0.55} />
+      <Circle cx="217" cy="71" r="1.3" fill="#A8A293" opacity={0.5} />
+      <Circle cx="214" cy="58" r="19" fill="none" stroke="#FFFFFF" strokeWidth={0.8} opacity={0.5} />
       {/* Colinas en silueta */}
       <Path d="M0 340 Q 50 312 100 330 Q 160 300 220 326 Q 260 312 300 322 L300 400 L0 400 Z" fill="#141B4D" />
       <Path d="M0 362 Q 70 340 140 356 Q 210 336 300 352 L300 400 L0 400 Z" fill="#0C1238" />
