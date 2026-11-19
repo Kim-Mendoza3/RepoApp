@@ -67,8 +67,8 @@ export default function KidsScreen() {
       <GameCard
         art={<StarsArt />}
         code="EXPERIMENTO 03"
-        description="Traza las constelaciones uniendo sus estrellas y descubre las figuras del cielo nocturno."
-        details="4 constelaciones"
+        description="Encuentra cada constelación entre las estrellas del cielo y trázala con tu dedo, con Divu astronauta."
+        details="5 constelaciones · 3 vidas"
         night
         route="/juegos/estrellas"
         specimen="constelación: Osa Mayor"
@@ -190,7 +190,7 @@ const BIG_DIPPER = [{ x: 0.9, y: 0.22 }, { x: 0.73, y: 0.3 }, { x: 0.57, y: 0.38
 const DIPPER_LINES = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 3]];
 const DUST = Array.from({ length: 26 }, (_, i) => ({ x: ((i * 37) % 100) / 100, y: ((i * 53 + 11) % 100) / 100, r: 0.6 + ((i * 7) % 3) * 0.4 }));
 
-/** Portada de estrellas: cielo de noche con la Osa Mayor que titila. */
+/** Portada de estrellas: cielo de noche con la Osa Mayor que titila y Divu astronauta. */
 function StarsArt() {
   const twinkle = useFloat(900);
   const glow = twinkle.interpolate({ inputRange: [0, 1], outputRange: [0.25, 1] });
@@ -211,6 +211,10 @@ function StarsArt() {
           ))}
         </Svg>
       </Animated.View>
+      <View style={styles.astroDivu}>
+        <Image accessibilityLabel="Divu astronauta" contentFit="contain" source={divuSource} style={StyleSheet.absoluteFill} />
+        <DivuAccessory boxWidth={78} face="normal" kind="astronaut" />
+      </View>
       {/* Centro de cada estrella: siempre blanco y brillante (solo titila el halo). */}
       <Svg height={H} style={StyleSheet.absoluteFill} viewBox={`0 0 ${W} ${H}`} width="100%">
         {BIG_DIPPER.map((star, i) => (
@@ -247,4 +251,5 @@ const styles = StyleSheet.create({
   legsTag: { fontFamily: fonts.monoBold, fontSize: 10, borderWidth: 2, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 1, marginTop: -4, overflow: 'hidden' },
   bugsDivu: { width: 96, height: 64, marginTop: 34 },
   sky: { position: 'absolute', left: 0, right: 0, top: 6, height: 150 },
+  astroDivu: { position: 'absolute', left: 16, top: 8, width: 78, height: 52 },
 });

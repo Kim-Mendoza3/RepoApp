@@ -669,6 +669,85 @@ def make_jar_open(out):
     save(b, out / 'jar-open.wav', peak=0.65)
 
 
+# ---------------------------------------------------------------------------
+# JUEGO "UNE LAS ESTRELLAS" (espacio)
+# ---------------------------------------------------------------------------
+
+def bell(buf, start, freq, vol=0.3, length=1.6):
+    """Campana celeste: seno con armónicos inarmónicos suaves que se apagan lento (brillo de estrella)."""
+    n0 = int(start * SR)
+    for i in range(int(length * SR)):
+        t = i / SR
+        s = math.sin(2 * math.pi * freq * t) * math.exp(-t * 2.2)
+        s += 0.35 * math.sin(2 * math.pi * freq * 2.01 * t) * math.exp(-t * 3.5)
+        s += 0.18 * math.sin(2 * math.pi * freq * 3.98 * t) * math.exp(-t * 6)
+        s += 0.1 * math.sin(2 * math.pi * freq * 5.4 * t) * math.exp(-t * 11)
+        _add(buf, n0 + i, vol * s * min(1.0, t / 0.002))
+
+
+def make_music_estrellas(out):
+    """Música del espacio: soñadora y tranquila (colchón amplio, campanitas, bajo largo), en bucle."""
+    bpm = 76
+    beat = 60 / bpm
+    bars = 8
+    loop = bars * 4 * beat
+    tail = 4.0
+    size = int((loop + tail) * SR)
+    music = [0.0] * size
+    rhythm = [0.0] * size
+    # Lam – Fa – Do – Sol: amplia y un poco misteriosa.
+    chords = [('A1', ['A3', 'C4', 'E4', 'B4']), ('F1', ['F3', 'A3', 'C4', 'E4']),
+              ('C2', ['C4', 'E4', 'G4', 'D5']), ('G1', ['G3', 'B3', 'D4', 'A4'])] * 2
+    for bar, (root, pad_notes) in enumerate(chords):
+        t0 = bar * 4 * beat
+        pad(music, t0, 4 * beat + 0.8, [note(n) for n in pad_notes], vol=0.09)
+        sub_bass(rhythm, t0, 4 * beat * 0.95, note(root), vol=0.3)
+        # Arpegio de campanitas, lento y espaciado.
+        tones = [note(n) * 2 for n in pad_notes]
+        for k, pos in enumerate((0, 1.5, 2, 3)):
+            bell(music, t0 + pos * beat, tones[k % len(tones)], vol=0.07)
+        kick(rhythm, t0, vol=0.28)
+        for k in range(8):
+            shaker(rhythm, t0 + k * beat / 2 + beat / 4, vol=0.025)
+    # Melodía de kalimba muy suave, como estrellas que aparecen.
+    melody = [('E5', 0), ('A5', 1), ('B5', 2.5), ('C6', 4), ('B5', 5), ('G5', 6.5),
+              ('E5', 8), ('G5', 9), ('A5', 10.5), ('E6', 12), ('D6', 13), ('B5', 14.5),
+              ('C6', 16), ('B5', 17), ('A5', 18.5), ('G5', 20), ('E5', 21), ('G5', 22.5),
+              ('A5', 24), ('C6', 25), ('B5', 26.5), ('A5', 28), ('E5', 29.5)]
+    for n, pos in melody:
+        kalimba(music, pos * beat, note(n), vol=0.18, length=2.2)
+    # Destellos lejanos al azar.
+    for k in range(9):
+        bell(music, random.uniform(0, loop - 1), note(random.choice(['E6', 'A6', 'B6', 'C7'])), vol=0.025)
+    wet = reverb(music, wet=0.45)
+    mix = [music[i] + wet[i] + rhythm[i] for i in range(size)]
+    n_loop = int(loop * SR)
+    for i in range(n_loop, size):
+        mix[i - n_loop] += mix[i]
+    save([math.tanh(1.1 * x) for x in mix[:n_loop]], out / 'music-estrellas.wav', peak=0.78)
+
+
+def make_star_notes(out):
+    """Unir estrellas: una nota de campana por estrella, cada vez más aguda (pentatónica de Do)."""
+    for k, n in enumerate(['C5', 'D5', 'E5', 'G5', 'A5', 'C6', 'D6', 'E6']):
+        b = silence(1.0)
+        bell(b, 0, note(n), vol=0.6, length=1.0)
+        bell(b, 0, note(n) * 2, vol=0.08, length=0.5)
+        save(b, out / f'star-{k}.wav', peak=0.55)
+
+
+def make_constellation(out):
+    """Constelación completa: barrido de destellos que sube y acorde brillante."""
+    size = int(2.2 * SR)
+    b = [0.0] * size
+    for k, n in enumerate(['C5', 'E5', 'G5', 'C6', 'E6', 'G6', 'C7']):
+        bell(b, k * 0.06, note(n), vol=0.22, length=1.4)
+    for n in ('C5', 'E5', 'G5', 'C6'):
+        bell(b, 0.45, note(n), vol=0.18, length=1.7)
+    wet = reverb(b, wet=0.35)
+    save([b[i] + wet[i] for i in range(size)], out / 'constellation.wav', peak=0.7)
+
+
 if __name__ == '__main__':
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
@@ -686,3 +765,6 @@ if __name__ == '__main__':
     make_clink(out)
     make_jar_lid(out)
     make_jar_open(out)
+    make_music_estrellas(out)
+    make_star_notes(out)
+    make_constellation(out)
