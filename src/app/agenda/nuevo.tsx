@@ -161,9 +161,14 @@ export default function NewActivityScreen() {
                   onPress={() => sendByWhatsApp(saved.contact_phone, confirmationMessage(saved))}
                   variant="accent"
                 />
-                {!saved.contact_phone ? (
+                {saved.contact_phone ? (
+                  // Plan B: si WhatsApp no reconoce el número, se elige el contacto a mano.
+                  <Pressable accessibilityRole="button" hitSlop={8} onPress={() => sendByWhatsApp(null, confirmationMessage(saved))}>
+                    <Text style={[textStyles.small, styles.centerText, styles.link, { color: colors.accent }]}>¿No aparece? Elegir el contacto en WhatsApp</Text>
+                  </Pressable>
+                ) : (
                   <Text style={[textStyles.small, styles.centerText, { color: colors.muted }]}>Sin teléfono: WhatsApp te dejará elegir el contacto.</Text>
-                ) : null}
+                )}
                 <AnimatedButton label="Agendar otro taller" onPress={reset} />
                 <AnimatedButton buttonColor={colors.soft} label="Listo" onPress={goBack} textColor={colors.text} />
               </View>
@@ -329,6 +334,7 @@ const styles = StyleSheet.create({
   error: { fontFamily: fonts.bodyMedium, fontSize: 14, lineHeight: 20, marginTop: 18 },
   successHeader: { alignItems: 'center', gap: 8, marginBottom: 18 },
   centerText: { textAlign: 'center' },
+  link: { fontFamily: fonts.bodySemi, textDecorationLine: 'underline', paddingVertical: 4 },
   bigCode: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 2, borderRadius: 18, paddingVertical: 16, marginBottom: 14 },
   bigCodeText: { fontFamily: fonts.mono, fontSize: 26, letterSpacing: 2 },
   buttons: { gap: 10, marginTop: 8 },

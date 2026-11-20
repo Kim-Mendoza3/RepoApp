@@ -104,10 +104,15 @@ export async function findByCode(code: string): Promise<CodeResult | null> {
   return data?.[0] ?? null;
 }
 
-/** Deja solo números y agrega la lada de México (52) si son 10 dígitos. */
+/**
+ * Deja solo números y agrega la lada de México para WhatsApp.
+ * Ojo: WhatsApp identifica los celulares mexicanos como 52 + 1 + 10 dígitos (el "1" antiguo).
+ * Con solo "52" a veces dice que el número "no está en WhatsApp" aunque sí lo esté.
+ */
 export function normalizePhone(phone: string | null) {
   const digits = (phone ?? '').replace(/\D/g, '');
-  if (digits.length === 10) return `52${digits}`;
+  if (digits.length === 10) return `521${digits}`;
+  if (digits.length === 12 && digits.startsWith('52')) return `521${digits.slice(2)}`;
   return digits.length >= 11 ? digits : '';
 }
 
