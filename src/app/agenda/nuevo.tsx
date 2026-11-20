@@ -5,18 +5,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedButton } from '@/components/animated-button';
 import { GridBackground } from '@/components/grid-background';
+import { WheelColumn, WheelPicker } from '@/components/wheel-picker';
 import { ArrowLeftIcon, CalendarPlusIcon, CheckCircleIcon, KeyIcon, WhatsappLogoIcon } from '@/components/icons';
 import { useColors } from '@/context/theme-context';
 import { catalog } from '@/data/workshops';
 import { ActivityCard } from '@/features/agenda/activity-card';
-import { confirmationMessage, dayKey, formatLongDate, formatTime, sendByWhatsApp, type Activity } from '@/features/agenda/agenda-data';
-import { MonthCalendar } from '@/features/agenda/month-calendar';
+import { confirmationMessage, formatLongDate, formatTime, MONTHS, sendByWhatsApp, type Activity } from '@/features/agenda/agenda-data';
 import { supabase } from '@/lib/supabase';
 import { pressedStyle, textStyles } from '@/theme/common-styles';
 import { fonts } from '@/theme/fonts';
 
-const HOURS = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
-const MINUTES = [0, 15, 30, 45];
+// Opciones de las ruedas de fecha y hora.
+const THIS_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = [THIS_YEAR, THIS_YEAR + 1, THIS_YEAR + 2].map((year) => ({ value: year, label: String(year) }));
+const MONTH_OPTIONS = MONTHS.map((name, i) => ({ value: i, label: name.charAt(0).toUpperCase() + name.slice(1) }));
+const HOUR_OPTIONS = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
+const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, i) => ({ value: i * 5, label: String(i * 5).padStart(2, '0') }));
+const PERIOD_OPTIONS = [{ value: 'am', label: 'a. m.' }, { value: 'pm', label: 'p. m.' }];
+const daysIn = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+const isPast = (date: Date) => date.getTime() <= Date.now();
 const DURATIONS: { minutes: number | null; label: string }[] = [
   { minutes: 50, label: '50 min' },
   { minutes: 60, label: '1 h' },
@@ -32,13 +39,14 @@ const DURATIONS: { minutes: number | null; label: string }[] = [
 // se le manda al cliente un mensaje de WhatsApp con los datos y el código.
 export default function NewActivityScreen() {
   const colors = useColors();
-  const today = dayKey(new Date());
-  const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth(), day: now.getDate() };
+  });
   const [client, setClient] = useState('');
   const [workshopKeys, setWorkshopKeys] = useState<string[]>([]);
-  const [day, setDay] = useState<string | null>(null);
-  const [hour, setHour] = useState<number | null>(null);
-  const [minute, setMinute] = useState(0);
+  // Hora en formato de 12 h, como en la rueda: 9:00 a. m. por defecto.
+  const [time, setTime] = useState<{ hour: number; minute: number; period: string }>({ hour: 9, minute: 0, period: 'am' });
   const [duration, setDuration] = useState<number | null>(60);
   const [location, setLocation] = useState('');
   const [people, setPeople] = useState('');
@@ -59,8 +67,20 @@ export default function NewActivityScreen() {
   };
 
   const reset = () => {
-    setClient(''); setWorkshopKeys([]); setDay(null); setHour(null); setMinute(0); setDuration(60);
+    setClient(''); setWorkshopKeys([]); setDuration(60);
     setLocation(''); setPeople(''); setGrade(''); setPhone(''); setNotes(''); setError(''); setSaved(null);
+  };
+
+  // Fecha y hora elegidas en las ruedas, convertidas a una fecha real (hora del celular).
+  const hour24 = (time.hour % 12) + (time.period === 'pm' ? 12 : 0);
+  const start = new Date(date.year, date.month, date.day, hour24, time.minute);
+
+  const changeDate = (part: Partial<typeof date>) => {
+    setDate((current) => {
+      const next = { ...current, ...part };
+      // Si el día ya no existe en el mes nuevo (31 de abril), usamos el último día del mes.
+      return { ...next, day: Math.min(next.day, daysIn(next.year, next.month)) };
+    });
   };
 
   const save = async () => {
@@ -68,8 +88,7 @@ export default function NewActivityScreen() {
     const phoneDigits = phone.replace(/\D/g, '');
     const problem = !client.trim() ? 'Escribe el nombre de la escuela o grupo.'
       : workshopKeys.length === 0 ? 'Elige al menos un taller.'
-      : !day ? 'Elige el día en el calendario.'
-      : hour === null ? 'Elige la hora de inicio.'
+      : isPast(start) ? 'La fecha y hora ya pasaron: elige un momento futuro.'
       : !location.trim() ? 'Escribe el lugar donde será el taller.'
       : count !== null && (!Number.isInteger(count) || count <= 0) ? 'El número de participantes debe ser un número entero.'
       : phoneDigits && phoneDigits.length < 10 ? 'El WhatsApp del contacto debe tener 10 dígitos.'
@@ -78,9 +97,8 @@ export default function NewActivityScreen() {
       setError(problem);
       return;
     }
-    if (!supabase || !day || hour === null) return;
+    if (!supabase) return;
 
-    const start = new Date(Number(day.slice(0, 4)), Number(day.slice(5, 7)) - 1, Number(day.slice(8, 10)), hour, minute);
     const end = duration ? new Date(start.getTime() + duration * 60000) : null;
     setSaving(true);
     setError('');
@@ -194,21 +212,26 @@ export default function NewActivityScreen() {
                 </View>
               </Field>
 
-              <Field label={`Día * ${day ? `· ${formatLongDate(new Date(`${day}T12:00:00`))}` : ''}`}>
-                <MonthCalendar minDay={today} month={month} onChangeMonth={setMonth} onSelect={setDay} selected={day} />
+              <Field label={`Día * · ${formatLongDate(start)}`}>
+                <WheelPicker>
+                  <WheelColumn
+                    label="Día"
+                    onChange={(day) => changeDate({ day })}
+                    options={Array.from({ length: daysIn(date.year, date.month) }, (_, i) => ({ value: i + 1, label: String(i + 1) }))}
+                    value={date.day}
+                    width={52}
+                  />
+                  <WheelColumn label="Mes" onChange={(month) => changeDate({ month })} options={MONTH_OPTIONS} value={date.month} width={128} />
+                  <WheelColumn label="Año" onChange={(year) => changeDate({ year })} options={YEAR_OPTIONS} value={date.year} width={70} />
+                </WheelPicker>
               </Field>
 
-              <Field label={`Hora de inicio * ${hour !== null ? `· ${formatTime(new Date(2000, 0, 1, hour, minute))}` : ''}`}>
-                <View style={styles.chips}>
-                  {HOURS.map((value) => (
-                    <OptionChip active={hour === value} key={value} label={formatTime(new Date(2000, 0, 1, value, 0)).replace(':00', '')} onPress={() => setHour(value)} />
-                  ))}
-                </View>
-                <View style={[styles.chips, styles.chipsGap]}>
-                  {MINUTES.map((value) => (
-                    <OptionChip active={minute === value} key={value} label={`:${String(value).padStart(2, '0')}`} onPress={() => setMinute(value)} />
-                  ))}
-                </View>
+              <Field label={`Hora de inicio * · ${formatTime(start)}`}>
+                <WheelPicker>
+                  <WheelColumn label="Hora" onChange={(hour) => setTime((t) => ({ ...t, hour }))} options={HOUR_OPTIONS} value={time.hour} width={56} />
+                  <WheelColumn label="Minutos" onChange={(minute) => setTime((t) => ({ ...t, minute }))} options={MINUTE_OPTIONS} value={time.minute} width={56} />
+                  <WheelColumn label="a. m. o p. m." onChange={(period) => setTime((t) => ({ ...t, period }))} options={PERIOD_OPTIONS} value={time.period} width={76} />
+                </WheelPicker>
               </Field>
 
               <Field label="Duración">
@@ -299,7 +322,6 @@ const styles = StyleSheet.create({
   input: { minHeight: 50, borderWidth: 1, borderRadius: 13, paddingHorizontal: 15, fontFamily: fonts.body, fontSize: 15 },
   multiline: { minHeight: 76, paddingTop: 13, paddingBottom: 13, textAlignVertical: 'top' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chipsGap: { marginTop: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 38, borderWidth: 1.5, borderRadius: 999, paddingHorizontal: 13 },
   chipDot: { width: 8, height: 8, borderRadius: 4 },
   chipText: { fontFamily: fonts.bodySemi, fontSize: 13 },
