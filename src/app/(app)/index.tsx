@@ -10,6 +10,7 @@ import { prepareTabTransition } from '@/components/tab-transition';
 import { WorkshopCarousel } from '@/components/workshop-carousel';
 import { useColors } from '@/context/theme-context';
 import { mixedWorkshopSlides } from '@/data/workshops';
+import { HomeAgenda } from '@/features/agenda/home-agenda';
 import { ProcessFlow } from '@/features/home/process-flow';
 import { textStyles } from '@/theme/common-styles';
 import { fonts } from '@/theme/fonts';
@@ -39,6 +40,9 @@ export default function HomeScreen() {
       </Text>
 
       <ProcessFlow />
+
+      {/* Calendario de talleres agendados + búsqueda por código */}
+      <HomeAgenda />
 
       <View style={styles.spacer} />
       <WorkshopCarousel

@@ -25,6 +25,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>;
+        Relationships: [];
       };
       children_profiles: {
         Row: {
@@ -43,6 +44,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['children_profiles']['Insert']>;
+        Relationships: [];
       };
       workshops: {
         Row: {
@@ -70,6 +72,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database['public']['Tables']['workshops']['Insert']>;
+        Relationships: [];
       };
       workshop_images: {
         Row: {
@@ -86,7 +89,75 @@ export type Database = {
           created_at?: string;
         };
         Update: Partial<Database['public']['Tables']['workshop_images']['Insert']>;
+        Relationships: [];
+      };
+      institutional_activities: {
+        Row: {
+          id: string;
+          code: string;
+          client_name: string | null;
+          contact_phone: string | null;
+          notes: string | null;
+          workshop_keys: string[];
+          location: string;
+          starts_at: string;
+          ends_at: string | null;
+          student_count: number | null;
+          school_grade: string | null;
+          status: SessionStatus;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code?: string;
+          client_name?: string | null;
+          contact_phone?: string | null;
+          notes?: string | null;
+          workshop_keys: string[];
+          location: string;
+          starts_at: string;
+          ends_at?: string | null;
+          student_count?: number | null;
+          school_grade?: string | null;
+          status?: SessionStatus;
+          created_by?: string;
+        };
+        Update: Partial<Database['public']['Tables']['institutional_activities']['Insert']>;
+        Relationships: [];
       };
     };
+    Views: { [_ in never]: never };
+    Functions: {
+      /** Calendario público: solo el día y los talleres (sin datos privados). */
+      agenda_public: {
+        Args: { p_from: string; p_to: string };
+        Returns: { day: string; workshop_keys: string[] }[];
+      };
+      /** Datos completos de UN taller agendado, buscándolo por su código. */
+      agenda_by_code: {
+        Args: { p_code: string };
+        Returns: {
+          code: string;
+          starts_at: string;
+          ends_at: string | null;
+          location: string;
+          client_name: string | null;
+          workshop_keys: string[];
+          student_count: number | null;
+          school_grade: string | null;
+          status: SessionStatus;
+        }[];
+      };
+    };
+    Enums: {
+      app_role: AppRole;
+      content_status: ContentStatus;
+      session_status: SessionStatus;
+      registration_status: RegistrationStatus;
+      event_type: EventType;
+    };
+    CompositeTypes: { [_ in never]: never };
   };
 };
