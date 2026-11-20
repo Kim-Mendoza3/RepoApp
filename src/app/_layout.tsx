@@ -74,9 +74,10 @@ function RootNavigator() {
         <Stack.Protected guard={!isStaff} redirectTo="/">
           <Stack.Screen name="(auth)" options={{ animation: 'slide_from_bottom' }} />
         </Stack.Protected>
-        {/* Solo administradores: agendar un taller. */}
+        {/* Solo administradores: agendar un taller y ver el historial. */}
         <Stack.Protected guard={isStaff} redirectTo="/">
           <Stack.Screen name="agenda/nuevo" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="agenda/historial" />
         </Stack.Protected>
         <Stack.Screen name="auth/callback" />
       </Stack>

@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'rea
 import { AnimatedButton } from '@/components/animated-button';
 import { AppScreen } from '@/components/app-screen';
 import { StatCard } from '@/components/cards';
-import { CalendarPlusIcon, WhatsappLogoIcon, XCircleIcon } from '@/components/icons';
+import { CalendarPlusIcon, ClockIcon, WhatsappLogoIcon, XCircleIcon } from '@/components/icons';
 import { useAuth } from '@/context/auth-context';
 import { useColors } from '@/context/theme-context';
 import { ActivityCard } from '@/features/agenda/activity-card';
@@ -79,6 +79,15 @@ export default function AdminScreen() {
         onPress={() => router.push('/agenda/nuevo')}
         variant="accent"
       />
+      <View style={styles.secondButton}>
+        <AnimatedButton
+          buttonColor={colors.surface}
+          label="Historial y resumen del año"
+          leading={<ClockIcon color={colors.text} size={20} weight="bold" />}
+          onPress={() => router.push('/agenda/historial')}
+          textColor={colors.text}
+        />
+      </View>
 
       <Text style={[textStyles.heading, styles.listTitle, { color: colors.text }]}>Próximos talleres</Text>
       {failed ? (
@@ -126,6 +135,7 @@ function SmallButton({ label, icon, color, onPress }: { label: string; icon: Rea
 const styles = StyleSheet.create({
   title: { marginTop: 4, marginBottom: 20 },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
+  secondButton: { marginTop: 10 },
   listTitle: { marginTop: 26, marginBottom: 12 },
   loading: { marginVertical: 16 },
   smallButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 38, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 12 },

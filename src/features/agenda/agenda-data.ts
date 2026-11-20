@@ -145,3 +145,48 @@ export async function sendByWhatsApp(phone: string | null, message: string) {
     Alert.alert('No se pudo abrir WhatsApp', 'Revisa que WhatsApp esté instalado e intenta de nuevo.');
   }
 }
+
+// ---------- HISTORIAL (solo administradores) ----------
+
+/** Meses que se guarda el teléfono del contacto después del taller (luego se borra). */
+export const CONTACT_RETENTION_MONTHS = 3;
+
+/** Todos los talleres de un año (agendados, realizados y cancelados), del más reciente al más antiguo. */
+export async function fetchYear(year: number): Promise<Activity[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('institutional_activities')
+    .select('*')
+    .gte('starts_at', new Date(year, 0, 1).toISOString())
+    .lt('starts_at', new Date(year + 1, 0, 1).toISOString())
+    .order('starts_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+/** Un taller cuenta como REALIZADO cuando ya pasó su fecha y no se canceló (no hay que marcarlo a mano). */
+export function isDone(activity: Pick<Activity, 'starts_at' | 'status'>, now: Date) {
+  return activity.status !== 'cancelled' && new Date(activity.starts_at) < now;
+}
+
+export async function setActivityStatus(id: string, status: Activity['status']) {
+  if (!supabase) return;
+  const { error } = await supabase.from('institutional_activities').update({ status }).eq('id', id);
+  if (error) throw error;
+}
+
+/**
+ * Privacidad: borra el teléfono del contacto de los talleres que pasaron hace más de
+ * CONTACT_RETENTION_MONTHS meses. El resto del historial se conserva. Se ejecuta cada vez
+ * que un administrador abre el historial.
+ */
+export async function purgeOldContactPhones() {
+  if (!supabase) return;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - CONTACT_RETENTION_MONTHS);
+  await supabase
+    .from('institutional_activities')
+    .update({ contact_phone: null })
+    .lt('starts_at', cutoff.toISOString())
+    .not('contact_phone', 'is', null);
+}
